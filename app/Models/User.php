@@ -21,6 +21,9 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'package_id',
+        'emails_used',
+        'leads_used',
     ];
 
     /**
@@ -45,4 +48,26 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    public function package()
+    {
+        return $this->belongsTo(Package::class);
+    }
+    public function campaigns()
+{
+    return $this->hasMany(Campaign::class);
+}
+
+    public function emailsRemaining()
+{
+   if (!$this->package) return 0;
+    
+    return $this->package->email_quota - $this->emails_used;
+}
+
+   public function leadsRemaining()
+{
+    if (!$this->package) return 0;
+    return (int) $this->package->lead_quota - (int) $this->leads_used;
+}
 }

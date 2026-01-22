@@ -13,6 +13,8 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->foreignId('package_id')->nullable();
+            $table->integer('emails_used')->default(0);
+            $table->integer('leads_used')->default(0);
         });
     }
 
