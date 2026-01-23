@@ -11,6 +11,14 @@
         <a href="{{ route('billing.index') }}" class="block hover:text-blue-400">Billing & Packages</a>
         <a href="{{ route('reports.index') }}" class="block hover:text-blue-400">Reports</a>
         <a href="{{ route('settings.index') }}" class="block hover:text-blue-400">Settings</a>
+        <div class="block text-white hover:text-red-700">
+    <form method="POST" action="{{ route('logout') }}">
+        @csrf
+        <button type="submit">
+            Logout
+        </button>
+    </form>
+</div>
 
         @if(auth()->user()->role === 'admin')
             <hr class="my-4 border-gray-700">
