@@ -1,18 +1,38 @@
 <aside class="w-64 min-h-screen px-4 py-6 text-white bg-gray-900">
     <div class="mb-8 text-2xl font-bold">
-        Drypp Email
+        Drypp
     </div>
-
     <nav class="space-y-3">
-        <a href="{{ route('dashboard') }}" class="block hover:text-blue-400">Dashboard</a>
-        <a href="{{ route('campaigns.index') }}" class="block hover:text-blue-400">Campaigns</a>
-        <a href="{{ route('contacts.index') }}" class="block hover:text-blue-400">Contacts</a>
-        <a href="{{ route('leads.index') }}" class="block hover:text-blue-400">Buy Leads</a>
-        <a href="{{ route('billing.index') }}" class="block hover:text-blue-400">Billing & Packages</a>
-        <a href="{{ route('reports.index') }}" class="block hover:text-blue-400">Reports</a>
-        <a href="{{ route('settings.index') }}" class="block hover:text-blue-400">Settings</a>
-        <div class="block text-white hover:text-red-700">
-    <form method="POST" action="{{ route('logout') }}">
+        @if(auth()->user()->role === 'user')
+        <a href="/dashboard" class="block hover:text-blue-400">Dashboard</a>
+        <a href="/campaigns" class="block hover:text-blue-400">Campaigns</a>
+        <a href="/contacts" class="block hover:text-blue-400">Contacts</a>
+        <a href="/reports" class="block hover:text-blue-400">Reports</a>
+        <a href="/billing" class="block hover:text-blue-400">Billing</a>
+@endif
+        {{-- ADMIN --}}
+        @if(auth()->user()->role === 'admin')
+            <div class="pb-2 text-xs font-semibold text-gray-400 uppercase">Admin Settings</div>
+            <a href="{{ route('admin.dashboard') }}" class="block hover:text-blue-400">
+                Dashboard
+            </a>
+            <a href="{{ route('admin.campaigns.index') }}" class="block hover:text-blue-400">
+                Campaigns
+            </a>
+            <a href="{{ route('admin.packages.index') }}" class="block hover:text-blue-400">
+                Manage Packages
+            </a>
+
+            <a href="{{ route('admin.smtps.index') }}" class="block hover:text-blue-400">
+                SMTP Management
+            </a>
+            
+            <a href="{{ route('admin.payments.index') }}" class="block hover:text-blue-400" >
+                Payments
+            </a>
+        @endif
+<div class="block text-white hover:text-red-700">
+        <form method="POST" action="{{ route('logout') }}">
         @csrf
         <button type="submit">
             Logout
@@ -20,9 +40,5 @@
     </form>
 </div>
 
-        @if(auth()->user()->role === 'admin')
-            <hr class="my-4 border-gray-700">
-            <a href="{{ route('admin.dashboard') }}" class="block text-red-400">Admin Dashboard</a>
-        @endif
     </nav>
 </aside>

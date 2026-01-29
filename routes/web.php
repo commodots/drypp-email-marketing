@@ -1,43 +1,68 @@
 <?php
 
-use App\Http\Controllers\CampaignController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Http\Request;
+use App\Http\Controllers\User\CampaignController;
+use App\Http\Controllers\User\DashboardController;
+use App\Http\Controllers\User\ContactController;
+use App\Http\Controllers\User\ContactGroupController;
+use App\Http\Controllers\User\ReportController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboard;
+use App\Http\Controllers\Admin\CampaignController as AdminCampaignController;
+use App\Http\Controllers\Admin\PackageController as AdminPackageController;
+use App\Http\Controllers\Admin\SmtpController;
+use App\Http\Controllers\Admin\PaymentController;
 
 Route::get('/', function () {
     return redirect()->route('login');
 });
 
+// Admin Routes
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/dashboard', [AdminDashboard::class, 'index'])->name('dashboard');
+
+    Route::get('/campaigns', [AdminCampaignController::class, 'index'])->name('campaigns.index');
+
+    Route::post('/campaigns/{campaign}/assign', [AdminCampaignController::class, 'assignSmtp'])->name('campaigns.assign');
+
+    Route::get('/campaigns/{campaign}/toggle', [AdminCampaignController::class, 'toggleStatus'])->name('campaigns.toggle');
+
+    Route::resource('packages', AdminPackageController::class);
+
+    Route::resource('smtps', SmtpController::class);
+
+    Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
+
+    Route::post('/payments/override/{user}', [PaymentController::class, 'override'])->name('payments.override');
+});
+
+// User Routes
 Route::middleware('auth')->group(function () {
-    Route::get('/dashboard', [DashboardController::class, 'index'])
-        ->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-
-    Route::post('/logout', function (Request $request) {
-    Auth::logout();
- 
-    $request->session()->invalidate();
-    $request->session()->regenerateToken();
- 
-    return redirect('/');
-})->name('logout');
-
-    Route::resource('campaigns', CampaignController::class)->only(['index', 'create', 'store']);
+    // Campaigns
+    Route::resource('campaigns', CampaignController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
     Route::post('campaigns/{campaign}/send', [CampaignController::class, 'send'])->name('campaigns.send');
 
-    Route::prefix('contacts')->name('contacts.')->group(function () {
-        Route::get('/', fn() => view('contacts.index'))->name('index');
-    });
+    // Reports
+    Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::post('/reports/toggle', [ReportController::class, 'toggleAutoReport'])->name('reports.toggle');
+    Route::get('/reports/export/{campaign}', [ReportController::class, 'export'])->name('reports.export');
 
+    // Placeholder Views
     Route::get('/leads', fn() => view('leads.index'))->name('leads.index');
-    Route::get('/billing', fn() => view('billing.index'))->name('billing.index');
-    Route::get('/reports', fn() => view('reports.index'))->name('reports.index');
+    Route::get('/billing', fn() => view('user.billing.index'))->name('billing.index');
+
+    
+    // Contacts
+    Route::get('/contacts', [ContactController::class, 'index'])->name('contacts.index');
+    Route::post('/contacts', [ContactController::class, 'store'])->name('contacts.store');
+    Route::delete('/contacts/{contact}', [ContactController::class, 'destroy'])->name('contacts.destroy');
+
+
+    Route::resource('groups', ContactGroupController::class);
+
+
+
     Route::get('/settings', fn() => view('settings.index'))->name('settings.index');
 });
 

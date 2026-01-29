@@ -15,11 +15,13 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('name');
-            $table->enum('type', ['cold_call', 'email_marketing']);
-            $table->enum('status', ['draft', 'scheduled', 'sent'])->default('draft');
-            $table->string('email_subject')->nullable();
-            $table->longText('email_body')->nullable();
-            $table->integer('emails_count')->default(0);
+            $table->enum('type', ['cold', 'bulk']); // Match Task
+            $table->enum('status', ['draft', 'queued', 'sending', 'paused', 'completed'])->default('draft');
+            $table->foreignId('smtp_id')->nullable()->constrained('smtp_servers');
+            $table->integer('total_emails')->default(0);
+            $table->integer('sent')->default(0);
+            $table->integer('opens')->default(0);
+            $table->integer('clicks')->default(0);
             $table->timestamps();
         });
     }

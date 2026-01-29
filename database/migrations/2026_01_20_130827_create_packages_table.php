@@ -12,14 +12,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('packages', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->enum('type', ['cold_call', 'email_marketing']);
-            $table->integer('email_quota')->nullable();
-            $table->integer('lead_quota')->nullable();
-            $table->integer('price');
-            $table->timestamps();
-        });
+    $table->id();
+    $table->string('name');
+    $table->enum('type', ['cold_email', 'email_marketing']);
+    $table->integer('email_limit'); 
+    $table->integer('lead_limit')->nullable();
+    $table->integer('price_ngn'); 
+    $table->timestamps();
+});
     }
 
     /**

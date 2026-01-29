@@ -3,6 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\User;
+use App\Models\SmtpServer;
+use App\Models\CampaignEmail;
+use App\Models\CampaignMessage;
+
 
 class Campaign extends Model
 {
@@ -11,13 +16,34 @@ class Campaign extends Model
         'name',
         'type',
         'status',
-        'email_subject',
-        'email_body',
-        'emails_count',
+        'smtp_id',
+        'total_emails',
+        'sent',
+        'opens',
+        'clicks',
+         'format'
     ];
 
     public function user()
     {
         return $this->belongsTo(User::class);
     }
+
+    public function smtp()
+    {
+        return $this->belongsTo(SmtpServer::class);
+    }
+
+    public function emailContent()
+    {
+        return $this->hasOne(CampaignEmail::class);
+    }
+    public function messages() {
+    return $this->hasMany(CampaignMessage::class);
+}
+
+public function getProgressAttribute() {
+    if ($this->total_emails == 0) return 0;
+    return ($this->sent / $this->total_emails) * 100;
+}
 }

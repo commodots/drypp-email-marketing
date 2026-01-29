@@ -15,36 +15,34 @@ class PackageSeeder extends Seeder
      */
     public function run(): void
     {
-        Package::updateOrCreate([
-            'name' => 'Cold Call Basic',
-            'type' => 'cold_call',
-            'email_quota' => 10000,
-            'lead_quota' => 50000,
-            'price' => 100,
+        Package::updateOrCreate(['name' => 'Starter'], [
+            'type' => 'cold_email',
+            'email_limit' => 5000,
+            'lead_limit' => 1000,
+            'price_ngn' => 15000,
         ]);
 
-    Package::updateOrCreate([
-            'name' => 'Cold Call Pro',
-            'type' => 'cold_call',
-            'email_quota' => 50000,
-            'lead_quota' => 100000,
-            'price' => 200,
+    Package::updateOrCreate(['name' => 'Pro'], [
+            'type' => 'cold_email',
+            'email_limit' => 50000,
+            'lead_limit' => 10000,
+            'price_ngn' => 45000,
         ]);
 
         Package::updateOrCreate([
-            'name' => 'Cold Call Premium',
-            'type' => 'cold_call',
-            'email_quota' => 300000,
-            'lead_quota' => 500000,
-            'price' => 500,
+            'name' => 'Cold Email Premium',
+            'type' => 'cold_email',
+            'email_limit' => 300000,
+            'lead_limit' => 500000,
+            'price_ngn' => 500,
         ]);
 
         Package::updateOrCreate([
             'name' => 'Email Marketing Monthly',
             'type' => 'email_marketing',
-            'email_quota' => 10000,
-            'lead_quota' => null,
-            'price' => 50,
+            'email_limit' => 10000,
+            'lead_limit' => null,
+            'price_ngn' => 50,
         ]);
     }
 }

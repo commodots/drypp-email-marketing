@@ -6,6 +6,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use App\Models\Subscription;
 
 class User extends Authenticatable
 {
@@ -24,6 +25,8 @@ class User extends Authenticatable
         'package_id',
         'emails_used',
         'leads_used',
+        'role', 
+        'two_factor_enabled',
     ];
 
     /**
@@ -54,20 +57,26 @@ class User extends Authenticatable
         return $this->belongsTo(Package::class);
     }
     public function campaigns()
-{
-    return $this->hasMany(Campaign::class);
-}
+    {
+        return $this->hasMany(Campaign::class);
+    }
 
     public function emailsRemaining()
-{
-   if (!$this->package) return 0;
-    
-    return $this->package->email_quota - $this->emails_used;
-}
+    {
+        if (!$this->subscription || $this->subscription->status !== 'active') return 0;
+        return $this->subscription->package->email_limit - $this->subscription->emails_used;
+    }
 
-   public function leadsRemaining()
-{
-    if (!$this->package) return 0;
-    return (int) $this->package->lead_quota - (int) $this->leads_used;
-}
+    public function leadsRemaining()
+    {
+        if (!$this->subscription || $this->subscription->status !== 'active') return 0;
+        return $this->subscription->package->lead_limit - $this->subscription->leads_used;
+    }
+    public function subscription()
+    {
+        return $this->hasOne(Subscription::class);
+    }
+    public function hasQuota($amount = 1) {
+        return $this->emailsRemaining() >= $amount;
+    }
 }
