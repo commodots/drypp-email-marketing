@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\User;
 use App\Models\SmtpServer;
@@ -11,6 +12,8 @@ use App\Models\CampaignMessage;
 
 class Campaign extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'user_id',
         'name',
@@ -31,7 +34,7 @@ class Campaign extends Model
 
     public function smtp()
     {
-        return $this->belongsTo(SmtpServer::class);
+        return $this->belongsTo(SmtpServer::class, 'smtp_id');
     }
 
     public function emailContent()

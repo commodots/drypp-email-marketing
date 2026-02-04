@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ config('app.name') }}</title>
     @vite(['resources/css/app.css','resources/js/app.js'])
+    @stack('styles')
 </head>
 <body class="bg-gray-100">
 
@@ -25,6 +26,8 @@
         {{-- Page Content --}}
         <main class="p-6">
         @yield('content')
+
+        @stack('scripts')
     </main>
     </div>
 </div>

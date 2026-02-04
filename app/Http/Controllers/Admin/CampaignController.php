@@ -9,24 +9,22 @@ use Illuminate\Http\Request;
 
 class CampaignController extends Controller
 {
-    public function index()
-    {
+public function index(Request $request)    {
         //Get Campaigns waiting for assignment (Queued)
-        $queuedCampaigns = Campaign::with('user')
-            ->where('status', 'queued')
-            ->latest()
-            ->get();
+        $status = $request->get('status', 'queued');
 
-        //Get Campaigns that are running or done (For monitoring)
-        $activeCampaigns = Campaign::with(['user', 'smtp'])
-            ->whereIn('status', ['sending', 'completed', 'paused'])
-            ->latest()
-            ->get();
+        $query = Campaign::with(['user', 'smtp'])
+        ->latest();
 
-        // Get Active SMTPs for the dropdown
-        $smtps = SmtpServer::where('active', true)->get();
+     if ($status !== 'all') {
+        $query->where('status', $status);
+    }
 
-        return view('admin.campaigns.index', compact('queuedCampaigns', 'activeCampaigns', 'smtps'));
+    $campaigns = $query->get();
+
+    $smtps = SmtpServer::where('active', true)->get(); 
+
+        return view('admin.campaigns.index', compact('campaigns', 'smtps', 'status'));
     }
 
     public function assignSmtp(Request $request, Campaign $campaign)
@@ -37,6 +35,10 @@ class CampaignController extends Controller
             'smtp_id' => $request->smtp_id,
             'status' => 'sending'
         ]);
+
+        $campaign->messages()->where('status', 'failed')->update([
+        'status' => 'pending'
+    ]);
 
         return back()->with('success', 'Campaign assigned to SMTP and started.');
     }

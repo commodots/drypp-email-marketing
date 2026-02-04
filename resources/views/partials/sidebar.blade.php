@@ -5,7 +5,12 @@
     <nav class="space-y-3">
         @if(auth()->user()->role === 'user')
         <a href="/dashboard" class="block hover:text-blue-400">Dashboard</a>
-        <a href="/campaigns" class="block hover:text-blue-400">Campaigns</a>
+        <div>
+<a href="{{ route('campaigns.index') }}" class="block hover:text-blue-400">Campaigns</a>
+
+<a href="{{ route('campaigns.create') }}" class="text-neutral-300 ml-4 text-sm hover:text-blue-400">Create Campaign</a>
+        </div>
+        
         <a href="/contacts" class="block hover:text-blue-400">Contacts</a>
         <a href="/reports" class="block hover:text-blue-400">Reports</a>
         <a href="/billing" class="block hover:text-blue-400">Billing</a>

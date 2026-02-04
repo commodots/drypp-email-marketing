@@ -17,32 +17,32 @@ class PackageSeeder extends Seeder
     {
         Package::updateOrCreate(['name' => 'Starter'], [
             'type' => 'cold_email',
-            'email_limit' => 5000,
+            'email_limit' => 50000,
             'lead_limit' => 1000,
-            'price_ngn' => 15000,
+            'price_ngn' => 30000,
         ]);
 
     Package::updateOrCreate(['name' => 'Pro'], [
             'type' => 'cold_email',
-            'email_limit' => 50000,
+            'email_limit' => 250000,
             'lead_limit' => 10000,
-            'price_ngn' => 45000,
+            'price_ngn' => 75000,
         ]);
 
         Package::updateOrCreate([
-            'name' => 'Cold Email Premium',
+            'name' => 'Business',
             'type' => 'cold_email',
-            'email_limit' => 300000,
+            'email_limit' => 1000000,
             'lead_limit' => 500000,
-            'price_ngn' => 500,
+            'price_ngn' => 250000,
         ]);
 
         Package::updateOrCreate([
-            'name' => 'Email Marketing Monthly',
+            'name' => 'Enterprise',
             'type' => 'email_marketing',
-            'email_limit' => 10000,
+            'email_limit' => 5000000,
             'lead_limit' => null,
-            'price_ngn' => 50,
+            'price_ngn' => 500000,
         ]);
     }
 }

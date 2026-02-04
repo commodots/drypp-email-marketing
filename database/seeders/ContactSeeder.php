@@ -7,34 +7,43 @@ use App\Models\User;
 use App\Models\Contact;
 use App\Models\ContactGroup;
 use App\Models\ContactGroupItem;
+use Faker\Factory as Faker;
 
 class ContactSeeder extends Seeder
 {
     public function run(): void
     {
-       $user = User::where('email', 'test@example.com')->first();
-        
-        if (!$user) {
-            $user = User::factory()->create([
-                'email' => 'test@example.com',
-                'name' => 'Test User'
+        $faker = Faker::create();
+        $user = User::where('email', 'test@example.com')->first();
+
+        // 1. Create Multiple Groups
+        $groupNames = ['VIP Leads', 'Newsletter Subscriptions', 'Past Customers', 'Inbound Inquiries'];
+        $groups = [];
+
+        foreach ($groupNames as $name) {
+            $groups[] = ContactGroup::firstOrCreate([
+                'user_id' => $user->id,
+                'name' => $name
             ]);
         }
 
-        $group = ContactGroup::firstOrCreate(
-            ['user_id' => $user->id, 'name' => 'VIP Leads']
-        );
+        // 2. Create 50 Real Contacts
+        for ($i = 1; $i <= 50; $i++) {
+            $email = $faker->unique()->safeEmail;
 
-        for ($i = 1; $i <= 20; $i++) {
             $contact = Contact::updateOrCreate(
-                ['email' => "lead{$i}@test.com"],
-                ['user_id' => $user->id]
+                ['email' => $email],
+                [
+                    'user_id' => $user->id,
+                    'created_at' => $faker->dateTimeBetween('-30 days', 'now'),
+                ]
             );
 
-            // Link to the group
+            // Randomly link to 1 or 2 groups
+            $randomGroup = $groups[array_rand($groups)];
             ContactGroupItem::firstOrCreate([
                 'contact_id' => $contact->id,
-                'contact_group_id' => $group->id
+                'contact_group_id' => $randomGroup->id
             ]);
         }
     }

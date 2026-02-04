@@ -11,21 +11,26 @@ return new class extends Migration
      * Run the migrations.
      */
     public function up()
-{
-    Schema::table('campaign_messages', function (Blueprint $table) {
+    {
+        Schema::table('campaign_messages', function (Blueprint $table) {
             $this->dropForeignKeyIfExists('campaign_messages', 'campaign_id', $table);
-            
+
             $table->foreign('campaign_id')
                   ->references('id')->on('campaigns')
                   ->onDelete('cascade');
         });
-}
+    }
 
-protected function dropForeignKeyIfExists($table, $column, $blueprint) {
+    protected function dropForeignKeyIfExists($table, $column, $blueprint) {
+        
+        if (DB::getDriverName() === 'sqlite') {
+            return;
+        }
+
         $conn = Schema::getConnection();
         $dbName = $conn->getDatabaseName();
         
-        // Query the database schema to see if the foreign key actually exists
+       
         $exists = DB::select("
             SELECT CONSTRAINT_NAME 
             FROM information_schema.KEY_COLUMN_USAGE 
@@ -36,14 +41,15 @@ protected function dropForeignKeyIfExists($table, $column, $blueprint) {
         ", [$dbName, $table, $column]);
 
         if (!empty($exists)) {
+            // Drop the specific constraint we found
             $blueprint->dropForeign($exists[0]->CONSTRAINT_NAME);
         }
     }
 
-public function down()
-{
-    Schema::table('campaign_messages', function (Blueprint $table) {
+    public function down()
+    {
+        Schema::table('campaign_messages', function (Blueprint $table) {
         //
     });
-}
+    }
 };

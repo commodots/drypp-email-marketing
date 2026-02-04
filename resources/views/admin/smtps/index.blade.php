@@ -14,6 +14,9 @@
             @csrf
             <input type="text" name="name" placeholder="Provider (e.g. Mailgun)" class="border-gray-300 rounded-lg" required>
             <input type="text" name="host" placeholder="Host IP / URL" class="border-gray-300 rounded-lg" required>
+            <input type="text" name="port" placeholder="Port" class="border-gray-300 rounded-lg" required>
+            <input type="text" name="username" placeholder="Username" class="border-gray-300 rounded-lg" required>
+            <input type="password" name="password" placeholder="Password" class="border-gray-300 rounded-lg" required>
             <input type="number" name="daily_limit" placeholder="Daily Limit" class="border-gray-300 rounded-lg" required>
             <button class="bg-gray-800 text-white px-4 py-2 rounded-lg font-bold hover:bg-black">Add Server</button>
         </form>
