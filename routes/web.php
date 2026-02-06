@@ -59,6 +59,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/contacts', [ContactController::class, 'index'])->name('contacts.index');
     Route::post('/contacts', [ContactController::class, 'store'])->name('contacts.store');
     Route::delete('/contacts/{contact}', [ContactController::class, 'destroy'])->name('contacts.destroy');
+    Route::post('/contacts/import', [ContactController::class, 'import'])->name('contacts.import');
 
 
     Route::resource('groups', ContactGroupController::class);

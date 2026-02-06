@@ -51,6 +51,20 @@
                 </form>
             </div>
 
+            <div class="bg-white p-6 rounded-xl border shadow-sm mb-6">
+    <h3 class="text-sm font-bold text-gray-700 mb-4 uppercase">Bulk Import Contacts (CSV)</h3>
+    <form action="{{ route('contacts.import') }}" method="POST" enctype="multipart/form-data" class="flex items-end gap-4">
+        @csrf
+        <div class="flex-1">
+            <label class="block text-xs text-gray-500 mb-1">Upload CSV (Headers: email, name, country, etc.)</label>
+            <input type="file" name="file" class="w-full text-sm text-gray-500 border rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" required>
+        </div>
+        <button type="submit" class="bg-gray-800 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-black transition">
+            Import
+        </button>
+    </form>
+</div>
+
         </div>
 
         {{--  Contacts List --}}

@@ -68,25 +68,42 @@ class DispatchCampaigns extends Command
                 'local_domain' => env('MAIL_EHLO_DOMAIN'),
             ]);
 
-            
+
             try {
                 // Find the contact to get their real name
                 $contact = Contact::where('email', $message->email)->first();
-                $realName = $contact->name ?? 'Friend'; 
+
+                $replacements = [
+                    '@{{ $name }}'    => $contact->name ?? 'Friend',
+                    '@{{ $email }}'   => $contact->email,
+                    '@{{ $country }}' => $contact->country ?? 'N/A',
+                ];
+
+                if (!empty($contact->meta) && is_array($contact->meta)) {
+                    foreach ($contact->meta as $key => $value) {
+                        $replacements["@{{ \$meta.$key }}"] = $value;
+                    }
+                }
 
                 $body = str_replace(
-                    '@{{ $name }}',
-                    $realName,
+                    array_keys($replacements),
+                    array_values($replacements),
                     $campaign->emailContent->body
+                );
+
+                $subject = str_replace(
+                    array_keys($replacements),
+                    array_values($replacements),
+                    $campaign->emailContent->subject
                 );
 
                 $isHtml = $campaign->emailContent->format === 'html';
 
-               
-                $this->info("Sending personalized email to {$realName} ({$message->email})...");
+
+                $this->info("Sending personalized email to {$contact->email}...");
 
                 Mail::mailer('dynamic_smtp')->send(
-                    [], 
+                    [],
                     [],
                     function ($msg) use ($message, $campaign, $server, $body, $isHtml) {
 
@@ -116,7 +133,7 @@ class DispatchCampaigns extends Command
 
 
                 if ($remaining === 0) {
-                    $campaign->update(['status' => 'completed']); 
+                    $campaign->update(['status' => 'completed']);
                     $this->info("Campaign '{$campaign->name}' finished!");
                 }
             } catch (\Exception $e) {
@@ -126,7 +143,7 @@ class DispatchCampaigns extends Command
                 ]);
             }
 
-            usleep(100000); 
+            usleep(100000);
         }
     }
 }

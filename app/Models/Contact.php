@@ -11,13 +11,15 @@ class Contact extends Model
 
     protected $fillable = [
         'user_id',
-        'email'
+        'email',
+        'name',
     ];
 
 
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'meta' => 'array'
     ];
 
     public function groups()
