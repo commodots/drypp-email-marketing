@@ -37,6 +37,16 @@ public function index(Request $request)
             'group_id' => 'nullable|exists:contact_groups,id'
             ]);
 
+        // Verify group belongs to authenticated user
+        if ($r->filled('group_id')) {
+            $groupExists = ContactGroup::where('user_id', auth()->id())
+                ->where('id', $r->group_id)
+                ->exists();
+            if (!$groupExists) {
+                return back()->withErrors(['group_id' => 'Invalid group selected.']);
+            }
+        }
+
         $contact = Contact::firstOrCreate([
             'user_id' => auth()->id(),
             'email' => $r->email
@@ -50,5 +60,15 @@ public function index(Request $request)
         }
 
         return back()->with('success', 'Contact added.');
+    }
+
+    public function destroy(Contact $contact)
+    {
+        if ($contact->user_id !== auth()->id()) {
+            abort(403);
+        }
+        
+        $contact->delete();
+        return back()->with('success', 'Contact deleted.');
     }
 }

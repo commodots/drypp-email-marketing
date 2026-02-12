@@ -22,7 +22,13 @@ class SendCampaignEmails implements ShouldQueue
     }
 
     public function handle() {
-        $campaign = Campaign::with('emailContent', 'user.subscription')->find($this->campaignId);
+        $campaign = Campaign::with('emailContent', 'user.subscription')
+            ->whereHas('messages', function($q) {
+                $q->where('status', 'pending');
+            })
+            ->find($this->campaignId);
+        
+        if (!$campaign) return;
         
         $smtp = $campaign->smtp_id 
             ? SmtpServer::find($campaign->smtp_id)
@@ -33,14 +39,35 @@ class SendCampaignEmails implements ShouldQueue
 
         if (!$smtp || !$campaign->user->hasQuota()) return;
 
-        //Configure Mailer on the fly 
-        config(['mail.mailers.smtp.host' => $smtp->host]);
+        // Configure Mailer with complete SMTP settings
+        config([
+            'mail.mailers.smtp.host' => $smtp->host,
+            'mail.mailers.smtp.port' => $smtp->port,
+            'mail.mailers.smtp.username' => $smtp->username,
+            'mail.mailers.smtp.password' => $smtp->password,
+            'mail.mailers.smtp.encryption' => $smtp->encryption,
+        ]);
 
-        //Send and Increment (Non-Negotiable Dev Rules)
-        // Mail::to(...)->send(...); 
+        // Get next pending message to send
+        $message = $campaign->messages()->where('status', 'pending')->first();
         
-        $smtp->increment('sent_today');
-        $campaign->increment('sent');
-        $campaign->user->subscription->increment('emails_used');
+        if ($message) {
+            try {
+                Mail::raw(
+                    $campaign->emailContent->body,
+                    function($mail) use ($message, $campaign) {
+                        $mail->to($message->email)
+                             ->subject($campaign->emailContent->subject);
+                    }
+                );
+                
+                $message->update(['status' => 'sent']);
+                $smtp->increment('sent_today');
+                $campaign->increment('sent');
+                $campaign->user->subscription->increment('emails_used');
+            } catch (\Exception $e) {
+                $message->update(['status' => 'failed']);
+            }
+        }
     }
 }

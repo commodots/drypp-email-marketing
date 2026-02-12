@@ -78,7 +78,7 @@ class CampaignController extends Controller
         'recipient_type' => 'required|in:group,all,except',
         'group_id' => 'nullable',
         'excluded_contact_ids' => 'nullable|array',
-        'action' => 'required|in:draft,send,preview,back,review', 
+        'action' => 'required|in:draft,send,preview,back', 
     ]);
 
     if ($request->action === 'back') return redirect()->route('campaigns.create')->withInput();
@@ -88,13 +88,17 @@ class CampaignController extends Controller
     $contactsQuery = Contact::query()->where('user_id', \Illuminate\Support\Facades\Auth::id());
 
     if ($request->recipient_type === 'group') {
+        // Validate group belongs to user if specified
+        $group = ContactGroup::where('user_id', \Illuminate\Support\Facades\Auth::id())
+            ->find($request->group_id);
+        if (!$group) abort(403, 'Group not found');
+        
         // Filter by Group
         $contactsQuery->whereHas('groups', function($q) use ($request) {
             $q->where('contact_groups.id', $request->group_id);
         });
         
-        // Fetch Group Name for display
-        $groupName = ContactGroup::find($request->group_id)->name;
+        $groupName = $group->name;
 
     } elseif ($request->recipient_type === 'except') {
         // Filter by Exception
@@ -123,7 +127,7 @@ class CampaignController extends Controller
             'recipient_type' => 'required|in:group,all,except',
             'group_id' => 'nullable',
             'excluded_contact_ids' => 'nullable|array',
-            'action' => 'required|in:draft,send,preview,back',
+            'action' => 'required|in:draft,send,preview,back', 
         ]);
 
         if ($request->action === 'back') {

@@ -9,9 +9,9 @@ class Package extends Model
     protected $fillable = [
         'name',
         'type',
-        'email_quota',
-        'lead_quota',
-        'price',
+        'email_limit',
+        'lead_limit',
+        'price_ngn',
     ];
 
     public function users()
