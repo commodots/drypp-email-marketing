@@ -24,8 +24,15 @@ class Campaign extends Model
         'sent',
         'opens',
         'clicks',
-         'format'
+        'format',
+        'recipient_type',
+        'group_id',
+        'excluded_contact_ids',
     ];
+
+    protected $casts = [
+    'excluded_contact_ids' => 'array', 
+];
 
     public function user()
     {
@@ -41,12 +48,14 @@ class Campaign extends Model
     {
         return $this->hasOne(CampaignEmail::class);
     }
-    public function messages() {
-    return $this->hasMany(CampaignMessage::class);
-}
+    public function messages()
+    {
+        return $this->hasMany(CampaignMessage::class);
+    }
 
-public function getProgressAttribute() {
-    if ($this->total_emails == 0) return 0;
-    return ($this->sent / $this->total_emails) * 100;
-}
+    public function getProgressAttribute()
+    {
+        if ($this->total_emails == 0) return 0;
+        return ($this->sent / $this->total_emails) * 100;
+    }
 }

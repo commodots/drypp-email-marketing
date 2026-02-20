@@ -54,16 +54,31 @@
                         @endforeach
                     </select>
 
-                    {{-- Dynamic Meta Fields Section --}}
-                    <div class="border-t pt-3 mt-3">
-                        <div class="flex justify-between items-center mb-2">
-                            <label class="text-xs font-bold text-gray-600 uppercase tracking-wider">Extra Details (Meta)</label>
-                            <button type="button" onclick="addMetaField()" class="text-blue-600 hover:text-blue-700 text-xs font-bold">+ Add Field</button>
-                        </div>
-                        <div id="metaFieldsContainer" class="space-y-2"></div>
+                    {{-- Advanced Personalization Section --}}
+                    <div class="border-t pt-4 mt-4">
+                        <details class="group">
+                            <summary class="flex justify-between items-center font-bold cursor-pointer list-none text-sm text-gray-700 hover:text-blue-600 transition">
+                                <span>+ Custom Email Variables</span>
+                                <span class="transition group-open:rotate-180 text-gray-400">
+                                    <svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="16"><path d="M6 9l6 6 6-6"></path></svg>
+                                </span>
+                            </summary>
+                            
+                            <div class="mt-4 space-y-3 bg-blue-50/50 p-4 rounded-lg border border-blue-100">
+                                <p class="text-xs text-gray-600 leading-relaxed">
+                                    Add extra details here to personalize your emails later. For example, if you add a field named <code class="bg-white text-blue-700 px-1 py-0.5 rounded border font-mono">city</code> with the value <code class="bg-white text-blue-700 px-1 py-0.5 rounded border font-mono">Lagos</code>, you can type <code class="bg-white text-red-600 px-1 py-0.5 rounded border font-mono">@{{ meta.city }}</code> in the Campaign Builder to automatically insert it!
+                                </p>
+                                
+                                <div id="metaFieldsContainer" class="space-y-2"></div>
+                                
+                                <button type="button" onclick="addMetaField()" class="w-full mt-2 bg-white border border-blue-200 text-blue-600 hover:bg-blue-50 text-xs font-bold py-2 rounded shadow-sm transition flex justify-center items-center gap-2">
+                                    <span>+ Add Custom Field</span>
+                                </button>
+                            </div>
+                        </details>
                     </div>
                     
-                    <button class="w-full bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 transition">Add Contact</button>
+                    <button class="w-full bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 transition mt-2">Add Contact</button>
                 </form>
             </div>
 
@@ -83,14 +98,12 @@
                 <div class="bg-white p-6 rounded-xl border shadow-sm mb-6">
                     <h3 class="text-sm font-bold text-gray-700 mb-4 uppercase">Bulk Import Contacts (CSV)</h3>
                     
-                    {{-- Added ID to form for JS tracking --}}
                     <form id="importForm" action="{{ route('contacts.import') }}" method="POST" enctype="multipart/form-data" class="flex items-end gap-4">
                         @csrf
                         <div class="flex-1">
                             <label class="block text-xs text-gray-500 mb-1">Upload CSV (Headers: email, name, country, etc.)</label>
                             <input type="file" name="file" accept=".csv" class="w-full text-sm text-gray-500 border rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" required>
                         </div>
-                        {{-- Added ID to button --}}
                         <button id="importBtn" type="submit" class="bg-gray-800 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-black transition flex items-center justify-center min-w-[100px]">
                             Import
                         </button>
@@ -206,9 +219,7 @@ document.getElementById('importForm').addEventListener('submit', function() {
     const btn = document.getElementById('importBtn');
     btn.disabled = true;
     btn.classList.add('opacity-75', 'cursor-not-allowed');
-    btn.innerHTML = `
-        Importing...
-    `;
+    btn.innerHTML = `Importing...`;
 });
 
 // Logic for Dynamic Meta Fields
@@ -219,27 +230,15 @@ function addMetaField() {
     const container = document.getElementById('metaFieldsContainer');
     
     const fieldGroup = document.createElement('div');
-    fieldGroup.className = 'flex gap-2 items-end';
+    fieldGroup.className = 'flex gap-2 items-start bg-white p-2 rounded border border-blue-100 shadow-sm';
     fieldGroup.innerHTML = `
-        <input 
-            type="text" 
-            name="meta_keys[]" 
-            placeholder="Field name (e.g., account_status)" 
-            class="flex-1 border-gray-300 rounded-lg focus:ring-blue-500 text-sm"
-            maxlength="50"
-        >
-        <input 
-            type="text" 
-            name="meta[]" 
-            placeholder="Value" 
-            class="flex-1 border-gray-300 rounded-lg focus:ring-blue-500 text-sm"
-            maxlength="500"
-        >
-        <button 
-            type="button" 
-            onclick="this.parentElement.remove()" 
-            class="text-red-500 hover:text-red-700 font-bold text-sm px-2"
-        >x</button>
+        <div class="flex-1">
+            <input type="text" name="meta_keys[]" placeholder="Name (e.g. city)" class="w-full border-gray-300 rounded focus:ring-blue-500 text-xs" maxlength="50" required>
+        </div>
+        <div class="flex-1">
+            <input type="text" name="meta[]" placeholder="Value (e.g. Lagos)" class="w-full border-gray-300 rounded focus:ring-blue-500 text-xs" maxlength="500" required>
+        </div>
+        <button type="button" onclick="this.parentElement.remove()" class="text-red-400 hover:text-red-600 font-bold px-2 py-1.5 bg-red-50 hover:bg-red-100 rounded transition" title="Remove">✕</button>
     `;
     
     container.appendChild(fieldGroup);

@@ -23,7 +23,6 @@ class CampaignController extends Controller
 
         $campaigns = $query->get();
 
-
         foreach ($campaigns as $c) {
             $c->progress = $c->total_emails > 0 ? round(($c->sent / $c->total_emails) * 100) : 0;
         }
@@ -41,8 +40,48 @@ class CampaignController extends Controller
     public function show(Campaign $campaign)
     {
         if ($campaign->user_id !== Auth::id()) abort(403);
+        
         $campaign->load(['emailContent', 'messages']);
-        return view('user.campaigns.show', compact('campaign'));
+
+        $previewRecipients = collect();
+
+        if ($campaign->status === 'draft') {
+            
+            // Dynamically query based on the saved rules
+            if ($campaign->recipient_type === 'group') {
+                $previewRecipients = ContactGroupItem::where('contact_group_id', $campaign->group_id)
+                    ->join('contacts', 'contacts.id', '=', 'contact_group_items.contact_id')
+                    ->select('contacts.email')
+                    ->get();
+            } elseif ($campaign->recipient_type === 'all') {
+                $previewRecipients = Contact::where('user_id', Auth::id())
+                    ->select('email')
+                    ->get();
+            } elseif ($campaign->recipient_type === 'except') {
+                $excludedIds = $campaign->excluded_contact_ids ?? [];
+                
+                $previewRecipients = Contact::where('user_id', Auth::id())
+                    ->whereNotIn('id', $excludedIds)
+                    ->select('email')
+                    ->get();
+            }
+            
+            // Map the dynamic contacts to look exactly like the CampaignMessage objects the Blade file expects
+            $previewRecipients = $previewRecipients->map(function ($contact) {
+                return (object)[
+                    'email' => $contact->email,
+                    'status' => 'draft_pending' // Custom status just for this view
+                ];
+            });
+
+            $totalRecipients = $previewRecipients->count();
+        } else {
+            // For queued/sending/completed campaigns, just use the real messages table
+            $previewRecipients = $campaign->messages;
+            $totalRecipients = $campaign->total_emails;
+        }
+
+        return view('user.campaigns.show', compact('campaign', 'previewRecipients', 'totalRecipients'));
     }
 
     public function stepTwo(Request $request)
@@ -50,72 +89,74 @@ class CampaignController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'subject' => 'required|string|max:255',
-
-            'recipient_type' => 'required|in:group,all,except,',
-
+            'recipient_type' => 'required|in:group,all,except', 
             'group_id' => 'nullable|required_if:recipient_type,group',
             'excluded_contact_ids' => 'nullable|array',
+            'body' => 'nullable|string', //Catch the email body when going backward
+            'format' => 'nullable|in:html,text', // Catch the format when going backward
         ]);
 
         $defaultTemplate = "<!DOCTYPE html>\n<html>\n<body>\n<h1>Hello @{{ \$name }},</h1>\n<p>Start typing your message here...</p>\n</body>\n</html>";
 
         session()->flash('show_preview', true);
-        session()->flash('preview_body', $defaultTemplate);
-        session()->flash('preview_format', 'html');
-
         
-        return view('user.campaigns.create_step_two', compact('data', 'defaultTemplate'));
+        //If returning from Step 3, load the existing body. Otherwise, use default.
+        session()->flash('preview_body', $request->body ?? $defaultTemplate);
+        session()->flash('preview_format', $request->format ?? 'html');
+
+        $metaKeys = $this->extractMetaKeys($request);
+
+        return view('user.campaigns.create_step_two', compact('data', 'defaultTemplate', 'metaKeys'));
     }
 
     public function stepThree(Request $request)
-{
-    // 1. Validate Step 2 Data
-    $data = $request->validate([
-        'name' => 'required|string',
-        'subject' => 'required|string',
-        'body' => 'nullable|string',
-        'format' => 'required|in:html,text',
-        'recipient_type' => 'required|in:group,all,except',
-        'group_id' => 'nullable',
-        'excluded_contact_ids' => 'nullable|array',
-        'action' => 'required|in:draft,send,preview,back', 
-    ]);
+    {
+        $data = $request->validate([
+            'name' => 'required|string',
+            'subject' => 'required|string',
+            'body' => 'nullable|string',
+            'format' => 'required|in:html,text',
+            'recipient_type' => 'required|in:group,all,except',
+            'group_id' => 'nullable',
+            'excluded_contact_ids' => 'nullable|array',
+            'action' => 'required|in:draft,send,preview,back,review', 
+        ]);
 
-    if ($request->action === 'back') return redirect()->route('campaigns.create')->withInput();
-    if ($request->action === 'draft') return $this->store($request); 
-    if ($request->action === 'preview') return $this->store($request); 
+        if ($request->action === 'back') return redirect()->route('campaigns.create')->withInput();
+        if ($request->action === 'draft') return $this->store($request); 
+        if ($request->action === 'preview') return $this->store($request); 
 
-    $contactsQuery = Contact::query()->where('user_id', \Illuminate\Support\Facades\Auth::id());
+        $contactsQuery = Contact::query()->where('user_id', \Illuminate\Support\Facades\Auth::id());
 
-    if ($request->recipient_type === 'group') {
+        if ($request->recipient_type === 'group') {
         // Validate group belongs to user if specified
-        $group = ContactGroup::where('user_id', \Illuminate\Support\Facades\Auth::id())
-            ->find($request->group_id);
-        if (!$group) abort(403, 'Group not found');
-        
+            $group = ContactGroup::where('user_id', \Illuminate\Support\Facades\Auth::id())
+                ->find($request->group_id);
+            if (!$group) abort(403, 'Group not found');
+            
         // Filter by Group
-        $contactsQuery->whereHas('groups', function($q) use ($request) {
-            $q->where('contact_groups.id', $request->group_id);
-        });
-        
-        $groupName = $group->name;
+            $contactsQuery->whereHas('groups', function($q) use ($request) {
+                $q->where('contact_groups.id', $request->group_id);
+            });
+            
+            $groupName = $group->name;
 
-    } elseif ($request->recipient_type === 'except') {
+        } elseif ($request->recipient_type === 'except') {
         // Filter by Exception
-        $contactsQuery->whereNotIn('id', $request->excluded_contact_ids ?? []);
-        $groupName = "All Contacts (Except " . count($request->excluded_contact_ids ?? []) . ")";
+            $contactsQuery->whereNotIn('id', $request->excluded_contact_ids ?? []);
+            $groupName = "All Contacts (Except " . count($request->excluded_contact_ids ?? []) . ")";
 
-    } else {
+        } else {
         // All Contacts
-        $groupName = "All Contacts";
-    }
+            $groupName = "All Contacts";
+        }
 
     // Get the actual list 
-    $recipients = $contactsQuery->select('email', 'id', 'created_at')->paginate(50);
-    $totalCount = $contactsQuery->count();
+        $recipients = $contactsQuery->select('email', 'id', 'created_at')->paginate(50);
+        $totalCount = $contactsQuery->count();
 
-    return view('user.campaigns.create_step_three', compact('data', 'recipients', 'totalCount', 'groupName'));
-}
+        return view('user.campaigns.create_step_three', compact('data', 'recipients', 'totalCount', 'groupName'));
+    }
 
     public function store(Request $request)
     {
@@ -127,31 +168,30 @@ class CampaignController extends Controller
             'recipient_type' => 'required|in:group,all,except',
             'group_id' => 'nullable',
             'excluded_contact_ids' => 'nullable|array',
-            'action' => 'required|in:draft,send,preview,back', 
+            'action' => 'required|in:draft,send,preview,back,review', 
         ]);
 
         if ($request->action === 'back') {
-            // This sends the user back to Step 1, but "carries" the data 
-            // they already typed (Name, Subject, etc.) so they don't have to re-type it.
             return redirect()->route('campaigns.create')->withInput();
         }
 
         if ($request->action === 'preview') {
             $data = $request->all();
-
             $defaultTemplate = "<!DOCTYPE html>\n<html>\n<body>\n<h1>Hello @{{ \$name }},</h1>\n<p>Start typing your message here...</p>\n</body>\n</html>";
 
             session()->flash('show_preview', true);
             session()->flash('preview_body', $request->body);
             session()->flash('preview_format', $request->format);
 
-            return view('user.campaigns.create_step_two', compact('data', 'defaultTemplate'));
+            $metaKeys = $this->extractMetaKeys($request);
+
+            return view('user.campaigns.create_step_two', compact('data', 'defaultTemplate', 'metaKeys'));
         }
 
         $isDraft = $request->input('action') === 'draft';
         $status = $isDraft ? 'draft' : 'queued';
 
-        // 1. Save to DB immediately (Safe Draft)
+        // Save everything to DB, including the new rules
         $campaign = Auth::user()->campaigns()->create([
             'name' => $request->name,
             'format' => $request->format,
@@ -159,6 +199,7 @@ class CampaignController extends Controller
             // We save these so we know who it was for if we edit the draft later
             'recipient_type' => $request->recipient_type,
             'group_id' => $request->group_id,
+            'excluded_contact_ids' => $request->excluded_contact_ids, 
         ]);
 
         $campaign->emailContent()->create([
@@ -167,11 +208,13 @@ class CampaignController extends Controller
             'format' => $request->format,
         ]);
 
+        // If it's a draft, stop here! Don't bloat the messages table yet.
         if ($isDraft) {
             return redirect()->route('campaigns.index')
                 ->with('success', 'Campaign saved as draft.');
         }
 
+        // If it is NOT a draft, proceed to gather emails and send to queue
         $emails = collect();
 
         if ($request->recipient_type === 'group') {
@@ -189,7 +232,6 @@ class CampaignController extends Controller
                 ->pluck('email');
         }
 
-
         if ($emails->isEmpty()) {
             // Clean up if no emails were found
             $campaign->delete();
@@ -198,7 +240,6 @@ class CampaignController extends Controller
         }
 
         $messages = [];
-
 
         foreach ($emails as $email) {
             $messages[] = [
@@ -218,7 +259,7 @@ class CampaignController extends Controller
         // Update the total count on the campaign
         $campaign->update(['total_emails' => count($messages)]);
 
-        // 6. Redirect to Index
+        //Redirect to Index
         return redirect()->route('campaigns.index')
             ->with('success', 'Campaign created and ' . count($messages) . ' emails queued successfully!');
     }
@@ -232,12 +273,16 @@ class CampaignController extends Controller
             'name' => 'required|string|max:255',
             'subject' => 'required|string|max:255',
             'body' => 'required|string',
-            'format' => 'required|in:html,text'
+            'format' => 'required|in:html,text',
+            'recipient_type' => 'required|in:group,all,except',
+            'group_id' => 'nullable|required_if:recipient_type,group'
         ]);
 
         $campaign->update([
             'name' => $request->name,
             'format' => $request->format,
+            'recipient_type' => $request->recipient_type,
+            'group_id' => $request->group_id,
         ]);
 
         $campaign->emailContent()->update([
@@ -252,30 +297,41 @@ class CampaignController extends Controller
     public function edit(Campaign $campaign)
     {
         if ($campaign->user_id !== Auth::id() || $campaign->status !== 'draft') abort(403);
+        
         $campaign->load('emailContent');
-        return view('user.campaigns.edit', compact('campaign'));
+        
+        // Fetch groups so the user can select/change them in the edit view
+        $groups = ContactGroup::where('user_id', Auth::id())->get();
+        
+        return view('user.campaigns.edit', compact('campaign', 'groups'));
     }
 
     public function send(Request $request, Campaign $campaign)
     {
         if ($campaign->user_id !== Auth::id()) abort(403);
-
+        if ($campaign->status !== 'draft') abort(400, 'Only drafts can be sent.');
 
         $emails = collect();
 
+        // Check the rules saved in the database
         if ($campaign->recipient_type === 'group') {
             $emails = ContactGroupItem::where('contact_group_id', $campaign->group_id)
                 ->join('contacts', 'contacts.id', '=', 'contact_group_items.contact_id')
                 ->pluck('contacts.email');
         } elseif ($campaign->recipient_type === 'all') {
             $emails = Contact::where('user_id', Auth::id())->pluck('email');
+        } elseif ($campaign->recipient_type === 'except') {
+            $excludedIds = $campaign->excluded_contact_ids ?? [];
+            $emails = Contact::where('user_id', Auth::id())
+                ->whereNotIn('id', $excludedIds)
+                ->pluck('email');
         }
 
         if ($emails->isEmpty()) {
             return back()->withErrors(['msg' => 'No recipients found for this selection.']);
         }
 
-        // 3. Queue Emails 
+        // Queue Emails 
         $messages = [];
         foreach ($emails as $email) {
             $messages[] = [
@@ -305,4 +361,30 @@ class CampaignController extends Controller
         $campaign->delete();
         return redirect()->route('campaigns.index')->with('success', 'Draft deleted.');
     }
+
+    private function extractMetaKeys(Request $request)
+    {
+        $contactsQuery = Contact::where('user_id', Auth::id());
+
+        if ($request->recipient_type === 'group' && $request->group_id) {
+            $contactsQuery->whereHas('groups', function($q) use ($request) {
+                $q->where('contact_groups.id', $request->group_id);
+            });
+        } elseif ($request->recipient_type === 'except') {
+            $contactsQuery->whereNotIn('id', $request->excluded_contact_ids ?? []);
+        }
+
+        $recipients = $contactsQuery->get(['meta']); 
+
+        $metaKeysArray = [];
+        foreach ($recipients as $contact) {
+            if (is_array($contact->meta)) {
+                foreach (array_keys($contact->meta) as $key) {
+                    $metaKeysArray[$key] = true; 
+                }
+            }
+        }
+        
+        return array_keys($metaKeysArray);
+    } 
 }

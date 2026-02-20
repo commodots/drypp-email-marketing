@@ -42,6 +42,15 @@ Route::middleware('auth')->group(function () {
     // Campaigns
     Route::post('/campaigns/step-two', [CampaignController::class, 'stepTwo'])->name('campaigns.stepTwo');
     Route::post('/campaigns/step-three', [CampaignController::class, 'stepThree'])->name('campaigns.stepThree');
+
+    // Fallback routes for accidental page refreshes
+    Route::get('/campaigns/step-two', function () {
+        return redirect()->route('campaigns.create');
+    });
+    Route::get('/campaigns/step-three', function () {
+        return redirect()->route('campaigns.create');
+    });
+
     Route::resource('campaigns', CampaignController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
     Route::post('campaigns/{campaign}/send', [CampaignController::class, 'send'])->name('campaigns.send');
 
@@ -54,7 +63,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/leads', fn() => view('leads.index'))->name('leads.index');
     Route::get('/billing', fn() => view('user.billing.index'))->name('billing.index');
 
-    
+
     // Contacts
     Route::get('/contacts', [ContactController::class, 'index'])->name('contacts.index');
     Route::post('/contacts', [ContactController::class, 'store'])->name('contacts.store');

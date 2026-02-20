@@ -70,28 +70,31 @@ class DispatchCampaigns extends Command
 
 
             try {
-                // Find the contact to get their real name
-                $contact = Contact::where('email', $message->email)->first();
+                // Find the contact, scoped securely to the campaign owner
+                $contact = Contact::where('email', $message->email)
+                                  ->where('user_id', $campaign->user_id)
+                                  ->first();
 
+                // Build replacements matching EXACTLY what the frontend JS inserts
                 $replacements = [
-                    '@{{ $name }}'    => $contact->name ?? 'Friend',
-                    '@{{ $email }}'   => $contact->email,
-                    '@{{ $country }}' => $contact->country ?? 'N/A',
+                    '{{ name }}'  => $contact->name ?? 'Friend',
+                    '{{ email }}' => $message->email,
                 ];
 
-                if (!empty($contact->meta) && is_array($contact->meta)) {
+                if ($contact && !empty($contact->meta) && is_array($contact->meta)) {
                     foreach ($contact->meta as $key => $value) {
-                        $replacements["@{{ \$meta.$key }}"] = $value;
+                        $replacements["{{ meta.$key }}"] = $value;
                     }
                 }
 
+                // Parse the body and subject
                 $body = str_replace(
                     array_keys($replacements),
                     array_values($replacements),
                     $campaign->emailContent->body
                 );
 
-                $subject = str_replace(
+                $parsedSubject = str_replace(
                     array_keys($replacements),
                     array_values($replacements),
                     $campaign->emailContent->subject
@@ -99,20 +102,20 @@ class DispatchCampaigns extends Command
 
                 $isHtml = $campaign->emailContent->format === 'html';
 
+                $this->info("Sending personalized email to {$message->email}...");
 
-                $this->info("Sending personalized email to {$contact->email}...");
-
+                //Send the mail
                 Mail::mailer('dynamic_smtp')->send(
                     [],
                     [],
-                    function ($msg) use ($message, $campaign, $server, $body, $isHtml) {
+                    // MUST pass $parsedSubject into the closure with 'use'
+                    function ($msg) use ($message, $campaign, $parsedSubject, $body, $isHtml) {
 
                         $senderEmail = $campaign->user->email;
                         $senderName  = $campaign->user->name;
 
                         $msg->to($message->email)
-                            ->subject($campaign->emailContent->subject)
-
+                            ->subject($parsedSubject) 
                             ->from($senderEmail, $senderName);
 
                         if ($isHtml) {
@@ -123,6 +126,7 @@ class DispatchCampaigns extends Command
                     }
                 );
 
+                // Update status and progress
                 $message->update(['status' => 'sent']);
                 $campaign->refresh();
                 $campaign->increment('sent');
@@ -130,7 +134,6 @@ class DispatchCampaigns extends Command
                 $remaining = CampaignMessage::where('campaign_id', $campaign->id)
                     ->where('status', 'pending')
                     ->count();
-
 
                 if ($remaining === 0) {
                     $campaign->update(['status' => 'completed']);

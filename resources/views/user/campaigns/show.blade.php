@@ -5,28 +5,34 @@
 <div class="max-w-7xl mx-auto space-y-6">
 
     {{--  HEADER ACTIONS --}}
-    <div class="flex justify-between items-center">
-        @if(session('preview_mode'))
-            <div class="flex items-center gap-4">
-                <a href="{{ route('campaigns.index') }}" class="bg-green-600 text-white px-6 py-2 rounded-lg font-bold shadow hover:bg-green-700 transition flex items-center gap-2">
-                    <span>&check;</span>
-                    <span>Looks Good - Finish</span>
-                </a>
-                <span class="text-sm text-blue-600 font-bold animate-pulse">Preview Mode</span>
-            </div>
-        @else
-            <a href="{{ route('campaigns.index') }}" class="text-blue-600 font-bold hover:underline">&larr; Back to Campaigns</a>
-        @endif
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         
         <div class="flex items-center gap-3">
-             <span class="px-3 py-1 rounded text-xs font-bold uppercase border
+            <a href="{{ route('campaigns.index') }}" class="text-blue-600 font-bold hover:underline">&larr; Back to Campaigns</a>
+            
+            <span class="px-3 py-1 rounded text-xs font-bold uppercase border ml-2
                 {{ $campaign->status === 'draft' ? 'bg-gray-100 text-gray-600 border-gray-200' : 'bg-green-50 text-green-700 border-green-200' }}">
                 Status: {{ $campaign->status }}
             </span>
-            @if($campaign->status === 'draft')
-                <a href="{{ route('campaigns.edit', $campaign) }}" class="text-gray-500 hover:text-blue-600 text-sm font-bold underline">Edit Content</a>
-            @endif
         </div>
+        
+        {{-- Action Buttons (Only show for drafts) --}}
+        @if($campaign->status === 'draft')
+            <div class="flex items-center gap-4">
+                <a href="{{ route('campaigns.edit', $campaign) }}" class="text-gray-500 hover:text-blue-600 text-sm font-bold underline">
+                    Edit Content
+                </a>
+                
+                {{--Delete Draft Form --}}
+                <form action="{{ route('campaigns.destroy', $campaign) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this draft? This cannot be undone.');" class="m-0 p-0">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="text-red-500 hover:text-red-700 text-sm font-bold underline bg-transparent border-none cursor-pointer p-0">
+                        Delete Draft
+                    </button>
+                </form>
+            </div>
+        @endif
     </div>
 
     {{--  GRID LAYOUT: Content (Left) vs Recipients (Right) --}}
@@ -55,9 +61,9 @@
                 <div class="bg-white min-h-[400px]">
                     @if(session('campaign_body') && $campaign->format === 'html')
                         {{-- Fresh Session Preview (Raw HTML) --}}
-                         <div class="p-6">
+                        <div class="p-6">
                             {!! session('campaign_body') !!}
-                         </div>
+                        </div>
                     @elseif($campaign->format === 'html')
                         {{-- Database HTML (Iframe for safety) --}}
                         <iframe class="w-full h-[600px] border-0" srcdoc="{{ $campaign->emailContent->body ?? '' }}"></iframe>
@@ -83,7 +89,7 @@
                 <div class="bg-blue-50 px-4 py-3 border-b border-blue-200 flex justify-between items-center">
                     <span class="font-bold text-blue-900 text-sm">Recipients</span>
                     <span class="bg-blue-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">
-                        {{ $campaign->total_emails }}
+                        {{ $totalRecipients }} 
                     </span>
                 </div>
 
@@ -91,34 +97,38 @@
                 <div class="max-h-[500px] overflow-y-auto custom-scrollbar">
                     <ul class="divide-y divide-blue-50">
                         
-                        @forelse($campaign->messages as $msg)
+                        {{--Now loops through the dynamically generated list --}}
+                        @forelse($previewRecipients as $msg)
                             <li class="px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 transition flex items-center justify-between gap-3">
-    <div class="flex items-center gap-2 overflow-hidden">
-        {{-- Status Dot --}}
-        <span class="w-2 h-2 rounded-full flex-shrink-0 
-            {{ $msg->status == 'sent' ? 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]' : '' }}
-            {{ $msg->status == 'pending' ? 'bg-gray-300' : '' }}
-            {{ $msg->status == 'failed' ? 'bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.5)]' : '' }}">
-        </span>
-        
-        {{-- Email Address --}}
-        <span class="font-mono text-xs truncate text-gray-600">{{ $msg->email }}</span>
-    </div>
+                                <div class="flex items-center gap-2 overflow-hidden">
+                                    {{-- Status Dot --}}
+                                    <span class="w-2 h-2 rounded-full flex-shrink-0 
+                                        {{ $msg->status == 'sent' ? 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]' : '' }}
+                                        {{ $msg->status == 'pending' ? 'bg-gray-300' : '' }}
+                                        {{ $msg->status == 'draft_pending' ? 'bg-gray-200 border border-gray-300' : '' }}
+                                        {{ $msg->status == 'failed' ? 'bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.5)]' : '' }}">
+                                    </span>
+                                    
+                                    {{-- Email Address --}}
+                                    <span class="font-mono text-xs truncate text-gray-600">{{ $msg->email }}</span>
+                                </div>
 
-    {{-- Text Status Label --}}
-    <span class="flex-shrink-0 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border
-        {{ $msg->status == 'sent' ? 'bg-green-50 text-green-700 border-green-200' : '' }}
-        {{ $msg->status == 'pending' ? 'bg-gray-100 text-gray-500 border-gray-200' : '' }}
-        {{ $msg->status == 'failed' ? 'bg-red-50 text-red-700 border-red-200' : '' }}">
-        
-        @if($msg->status == 'failed')
-            
-            Rejected
-        @else
-            {{ $msg->status }}
-        @endif
-    </span>
-</li>
+                                {{-- Text Status Label --}}
+                                <span class="flex-shrink-0 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border
+                                    {{ $msg->status == 'sent' ? 'bg-green-50 text-green-700 border-green-200' : '' }}
+                                    {{ $msg->status == 'pending' ? 'bg-gray-100 text-gray-500 border-gray-200' : '' }}
+                                    {{ $msg->status == 'draft_pending' ? 'bg-gray-50 text-gray-400 border-gray-100' : '' }}
+                                    {{ $msg->status == 'failed' ? 'bg-red-50 text-red-700 border-red-200' : '' }}">
+                                    
+                                    @if($msg->status == 'failed')
+                                        Rejected
+                                    @elseif($msg->status == 'draft_pending')
+                                        Pending
+                                    @else
+                                        {{ $msg->status }}
+                                    @endif
+                                </span>
+                            </li>
                         @empty
                             <li class="p-6 text-center text-gray-400 italic text-xs">
                                 No recipients found in database.
@@ -126,11 +136,15 @@
                         @endforelse
                     </ul>
                 </div>
-                
-               
             </div>
         </div>
-
     </div>
 </div>
+
+<style>
+    /* Custom scrollbar for the preview panel */
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+</style>
 @endsection

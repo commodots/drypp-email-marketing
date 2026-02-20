@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Campaign;
 use App\Models\SmtpServer;
+use App\Models\Contact;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -52,22 +53,70 @@ class SendCampaignEmails implements ShouldQueue
         $message = $campaign->messages()->where('status', 'pending')->first();
         
         if ($message) {
+            // Retrieve the actual Contact record to get their custom data
+            $contact = Contact::where('email', $message->email)
+                              ->where('user_id', $campaign->user_id)
+                              ->first();
+
+            // Fetch the raw subject and body
+            $rawSubject = $campaign->emailContent->subject;
+            $rawBody = $campaign->emailContent->body;
+
+            // Parse the variables
+            $parsedSubject = $this->replaceVariables($rawSubject, $contact);
+            $parsedBody = $this->replaceVariables($rawBody, $contact);
+
             try {
-                Mail::raw(
-                    $campaign->emailContent->body,
-                    function($mail) use ($message, $campaign) {
+                // Send as HTML or Text depending on the campaign settings
+                if ($campaign->emailContent->format === 'html') {
+                    Mail::html($parsedBody, function($mail) use ($message, $parsedSubject) {
                         $mail->to($message->email)
-                             ->subject($campaign->emailContent->subject);
-                    }
-                );
+                             ->subject($parsedSubject);
+                    });
+                } else {
+                    Mail::raw($parsedBody, function($mail) use ($message, $parsedSubject) {
+                        $mail->to($message->email)
+                             ->subject($parsedSubject);
+                    });
+                }
                 
                 $message->update(['status' => 'sent']);
                 $smtp->increment('sent_today');
                 $campaign->increment('sent');
                 $campaign->user->subscription->increment('emails_used');
+                
             } catch (\Exception $e) {
                 $message->update(['status' => 'failed']);
             }
         }
+    }
+
+    /**
+     * Replaces {{ variables }} with actual contact data.
+     */
+    private function replaceVariables($text, $contact)
+    {
+        // If there's no contact found (fallback), just strip the variables out so it doesn't look broken
+        if (!$contact) {
+            return preg_replace('/\{\{\s*[^}]+\s*\}\}/', '', $text);
+        }
+
+        // Use Regex to find everything inside {{ }}
+        return preg_replace_callback('/\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/', function($matches) use ($contact) {
+            $key = trim($matches[1]); // e.g., 'name', 'email', or 'meta.address'
+
+            if ($key === 'name') return $contact->name ?? '';
+            if ($key === 'email') return $contact->email ?? '';
+
+            // Handle nested JSON meta columns (e.g., meta.child_name)
+            if (str_starts_with($key, 'meta.')) {
+                $metaKey = substr($key, 5); // remove 'meta.'
+                $meta = $contact->meta ?? [];
+                return $meta[$metaKey] ?? ''; // Return the value, or an empty string if it doesn't exist
+            }
+
+            // If a user types {{ something_random }} that isn't a variable, we just remove it
+            return ''; 
+        }, $text);
     }
 }

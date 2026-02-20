@@ -71,7 +71,7 @@
         </div>
 
         {{-- FINAL ACTIONS --}}
-        <div class="p-6 bg-gray-50 border-t flex justify-between items-center">
+        <div class="p-6 bg-gray-50 border-t flex flex-col sm:flex-row gap-4 justify-between items-center">
             
             {{-- Back to Step 2 (Form Submission to preserve data) --}}
             <form action="{{ route('campaigns.stepTwo') }}" method="POST">
@@ -91,8 +91,8 @@
                 </button>
             </form>
 
-            {{-- LAUNCH BUTTON --}}
-            <form action="{{ route('campaigns.store') }}" method="POST">
+            {{-- DRAFT & LAUNCH BUTTONS --}}
+            <form action="{{ route('campaigns.store') }}" method="POST" class="flex flex-wrap gap-3">
                 @csrf
                 {{-- Carry ALL Data Forward to Store --}}
                 @foreach($data as $key => $value)
@@ -103,7 +103,13 @@
                     @endif
                 @endforeach
 
-                <button type="submit" name="action" value="send" class="bg-blue-600 text-white px-8 py-3 rounded-lg font-bold shadow-lg hover:bg-blue-700 hover:shadow-xl transition transform hover:-translate-y-0.5 flex items-center gap-2">
+                {{-- Save Draft Button --}}
+                <button type="submit" name="action" value="draft" class="bg-white text-blue-600 border border-blue-600 px-6 py-3 rounded-lg font-bold hover:bg-blue-50 transition flex items-center justify-center">
+                    Save as Draft
+                </button>
+
+                {{-- Launch Button --}}
+                <button type="submit" name="action" value="send" class="bg-blue-600 text-white px-8 py-3 rounded-lg font-bold shadow-lg hover:bg-blue-700 hover:shadow-xl transition transform hover:-translate-y-0.5 flex items-center justify-center gap-2" {{ $recipients->isEmpty() ? 'disabled' : '' }}>
                     <span>Send Campaign</span>
                 </button>
             </form>

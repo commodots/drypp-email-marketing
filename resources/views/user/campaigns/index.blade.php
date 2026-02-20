@@ -2,16 +2,28 @@
 @section('title', 'Campaigns')
 @section('content')
 
-
 <div class="max-w-6xl mx-auto space-y-6">
     <div>
-        <a href="{{ route('campaigns.create') }}" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold">+ New Campaign</a>
+        <a href="{{ route('campaigns.create') }}" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold shadow-sm hover:bg-blue-700 transition">+ New Campaign</a>
     </div>
 
+    {{--  Added an ID and a quick fade-out script --}}
     @if(session('success'))
-        <div class="p-4 mb-4 text-sm text-green-800 rounded-lg bg-green-50 font-bold border border-green-200">
+        <div id="flash-message" class="p-4 mb-4 text-sm text-green-800 rounded-lg bg-green-50 font-bold border border-green-200 shadow-sm transition-opacity duration-500 ease-in-out">
             {{ session('success') }}
         </div>
+        
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                setTimeout(function() {
+                    let flash = document.getElementById('flash-message');
+                    if(flash) {
+                        flash.style.opacity = '0'; // Trigger the CSS fade
+                        setTimeout(() => flash.remove(), 500); // Remove from DOM after fade finishes
+                    }
+                }, 4000); // 4 seconds before it starts fading
+            });
+        </script>
     @endif
 
     <div>
@@ -20,7 +32,7 @@
                 <a href="{{ route('campaigns.index', ['status' => $key === 'all' ? null : $key]) }}" 
                    class="px-4 py-2 rounded-full text-xs font-bold border transition
                    {{ (request('status') == $key) || (request('status') == null && $key == 'all') 
-                      ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 hover:border-blue-400' }}">
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white text-gray-600 hover:border-blue-400' }}">
                     {{ $label }}
                 </a>
             @endforeach
@@ -37,41 +49,30 @@
                     <th class="p-4 text-right">Actions</th>
                 </tr>
             </thead>
-            <tbody class="divide-y">
+            <tbody class="divide-y divide-gray-100">
                 @foreach($campaigns as $campaign)
-                <tr>
-                    <td class="p-4 font-medium">{{ $campaign->name }}</td>
-                    <td class="p-4 text-xs uppercase font-bold">{{ $campaign->status }}</td>
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="p-4 font-medium text-gray-800">{{ $campaign->name }}</td>
+                    <td class="p-4 text-xs uppercase font-bold text-gray-600">{{ $campaign->status }}</td>
                     <td class="p-4">
-                        <div class="w-full bg-gray-200 rounded-full h-2 flex overflow-hidden">
-                            <div class="bg-blue-600 h-full" style="width: {{ $campaign->progress }}%"></div>
+                        <div class="w-full bg-gray-200 rounded-full h-2 flex overflow-hidden mb-1">
+                            <div class="bg-blue-600 h-full transition-all duration-500" style="width: {{ $campaign->progress }}%"></div>
                         </div>
-                        <span class="text-[10px] text-gray-500">{{ $campaign->sent }} / {{ $campaign->total_emails }} sent</span>
+                        <span class="text-[10px] text-gray-500 font-medium">{{ $campaign->sent }} / {{ $campaign->total_emails }} sent</span>
                     </td>
                     <td class="p-4 text-right">
-                        <div class="flex justify-end gap-4 items-start">
-                            <a href="{{ route('campaigns.show', $campaign) }}" class="text-blue-600 text-xs font-bold py-1">View</a>
+                        <div class="flex justify-end gap-4 items-center">
+                            {{-- View Link --}}
+                            <a href="{{ route('campaigns.show', $campaign) }}" class="text-blue-600 hover:text-blue-800 hover:underline text-xs font-bold transition">View</a>
                             
+                            {{-- Send Campaign Link (Only for Drafts) --}}
                             @if($campaign->status == 'draft')
-                            <form action="{{ route('campaigns.send', $campaign) }}" method="POST" class="bg-gray-50 p-3 rounded-lg border border-gray-200 w-64 text-left">
-                                @csrf
-                                
-                                <input type="radio" id="type-group-{{ $campaign->id }}" name="recipient_type" value="group" checked class="radio-group hidden">
-                                <input type="radio" id="type-indiv-{{ $campaign->id }}" name="recipient_type" value="individual" class="radio-individual hidden">
-
-                                
-                                <div class="tab-labels flex gap-1 bg-gray-200 p-1 rounded-md mb-2">
-                                    <label for="type-group-{{ $campaign->id }}" class="label-group flex-1 text-center cursor-pointer text-[10px] font-bold py-1 rounded transition">
-                                        Group
-                                    </label>
-                                    <label for="type-indiv-{{ $campaign->id }}" class="label-individual flex-1 text-center cursor-pointer text-[10px] font-bold py-1 rounded transition">
-                                        Individuals
-                                    </label>
-                                </div>
-                                <button class="w-full mt-3 bg-blue-600 text-white px-4 py-1.5 rounded text-xs font-bold hover:bg-blue-700 transition">
-                                    Send Campaign
-                                </button>
-                            </form>
+                                <form action="{{ route('campaigns.send', $campaign) }}" method="POST" class="m-0 p-0 inline-block" onsubmit="return confirm('Are you sure you want to send this drafted campaign?');">
+                                    @csrf
+                                    <button type="submit" class="text-green-600 hover:text-green-800 hover:underline text-xs font-bold bg-transparent border-none cursor-pointer p-0 transition">
+                                        Send Campaign
+                                    </button>
+                                </form>
                             @endif
                         </div>
                     </td>

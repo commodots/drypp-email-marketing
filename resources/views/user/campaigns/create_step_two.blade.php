@@ -49,14 +49,36 @@
                 <div class="space-y-6">
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Email Format</label>
-                        <select name="format" id="formatSelector" class="w-full border-gray-300 rounded-lg shadow-sm">
+                        <select name="format" id="formatSelector" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
                             <option value="html" {{ (session('preview_format') ?? $data['format'] ?? '') == 'html' ? 'selected' : '' }}>HTML Code</option>
                             <option value="text" {{ (session('preview_format') ?? $data['format'] ?? '') == 'text' ? 'selected' : '' }}>Plain Text</option>
                         </select>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-1">Message Content</label>
+                        {{-- Dropdown and Helper Text --}}
+                        <div class="flex flex-col mb-3">
+                            <div class="flex justify-between items-end mb-1">
+                                <label class="block text-sm font-semibold text-gray-700">Message Content</label>
+                                
+                                <div class="flex items-center gap-2">
+                                    <select id="variableDropdown" onchange="insertFromDropdown(this)" class="text-sm border-gray-300 rounded-md py-1 pl-2 pr-8 focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="">-- Insert Variable --</option>
+                                        <option value="name">Name</option>
+                                        <option value="email">Email Address</option>
+                                        @if(isset($metaKeys) && is_array($metaKeys))
+                                            @foreach($metaKeys as $key)
+                                                <option value="meta.{{ $key }}">{{ str_replace('_', ' ', ucwords($key)) }}</option>
+                                            @endforeach
+                                        @endif
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="text-[11px] text-gray-500 mt-2">
+                                Use the dropdown above to add data, or type it manually like <code class="bg-gray-100 text-red-600 px-1 rounded font-mono">@{{ name }}</code>, <code class="bg-gray-100 text-red-600 px-1 rounded font-mono">@{{ meta.address }}</code>, or <code class="bg-gray-100 text-red-600 px-1 rounded font-mono">@{{ meta.exact_csv_header_name }}</code>.
+                            </div>
+                        </div>
+
                         {{-- The actual textarea CodeMirror will replace --}}
                         <textarea name="body" id="codeEditor" class="hidden">{{ session('preview_body') ?? $defaultTemplate }}</textarea>
                     </div>
@@ -75,16 +97,10 @@
                             </button>
                         </div>
                       <div class="text-center mt-2">
-    <button 
-        type="submit" 
-        name="action" 
-        value="back" 
-        formnovalidate 
-        class="text-sm font-semibold text-gray-400 hover:text-gray-600 transition flex items-center justify-center gap-1 w-full bg-transparent border-none cursor-pointer"
-    >
-        <- Back to Step 1
-    </button>
-</div>
+                        <button type="submit" name="action" value="back" formnovalidate class="text-sm font-semibold text-gray-400 hover:text-gray-600 transition flex items-center justify-center gap-1 w-full bg-transparent border-none cursor-pointer">
+                            &larr; Back to Step 1
+                        </button>
+                      </div>
                     </div>
                 </div>
             </form>
@@ -120,6 +136,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/htmlmixed/htmlmixed.min.js"></script>
 
 <script>
+    let editor; 
+
     document.addEventListener('DOMContentLoaded', function() {
         const textArea = document.getElementById('codeEditor');
         const formatSelector = document.getElementById('formatSelector');
@@ -127,8 +145,9 @@
         // Get the default template from PHP
         const htmlTemplate = `{!! addslashes($defaultTemplate) !!}`;
         
-        // 2. Initialize CodeMirror
-        const editor = CodeMirror.fromTextArea(textArea, {
+        // Initialize CodeMirror
+        
+        editor = CodeMirror.fromTextArea(textArea, {
             mode: "htmlmixed",
             theme: "dracula",
             lineNumbers: true,
@@ -136,34 +155,51 @@
             tabSize: 4
         });
 
-        // 3. Sync Content
+        // Sync Content
         editor.on('change', () => {
             editor.save(); 
         });
 
-        // Handle Format Toggle
+        let cachedHtml = ""; //Variable to act as memory for our HTML code
+
+        function stripHtmlToText(html) {
+            let text = html.replace(/<br\s*\/?>/gi, '\n')
+                           .replace(/<\/p>/gi, '\n\n')
+                           .replace(/<\/h[1-6]>/gi, '\n\n')
+                           .replace(/<\/div>/gi, '\n')
+                           .replace(/<li>/gi, '- ')
+                           .replace(/<\/li>/gi, '\n');
+                           
+            let tmp = document.createElement("div");
+            tmp.innerHTML = text;
+            return (tmp.textContent || tmp.innerText || "").trim();
+        }
+
         function updateEditorMode() {
+            let currentVal = editor.getValue();
+
             if (formatSelector.value === 'text') {
                 // === SWITCHING TO TEXT MODE ===
+                if (editor.getOption("mode") !== "text/plain") {
+                    cachedHtml = currentVal; // Save a snapshot of the HTML before stripping
+                    editor.setValue(stripHtmlToText(currentVal));
+                }
+
                 editor.setOption("mode", "text/plain");
                 editor.setOption("theme", "default"); 
-                
-            
-                // If the editor currently holds the HTML template, clear it.
-                // We use trim() to ignore invisible spaces/newlines.
-                if (editor.getValue().trim() === htmlTemplate.trim()) {
-                    editor.setValue(""); 
-                }
 
             } else {
                 // === SWITCHING TO HTML MODE ===
-                editor.setOption("mode", "htmlmixed");
-                editor.setOption("theme", "dracula"); 
-
-                // If the box is empty, bring back the HTML template
-                if (editor.getValue().trim() === "") {
+                if (editor.getOption("mode") === "text/plain" && cachedHtml !== "") {
+                    // Restore the snapshot if they flip back to HTML
+                    editor.setValue(cachedHtml);
+                } else if (currentVal.trim() === "") {
+                    // Fallback to default template if the box is completely empty
                     editor.setValue(htmlTemplate);
                 }
+                
+                editor.setOption("mode", "htmlmixed");
+                editor.setOption("theme", "dracula"); 
             }
         }
 
@@ -172,6 +208,26 @@
         // Run once on load to ensure correct state (e.g. if user came back from preview)
         updateEditorMode(); 
     });
+
+    // Handle Dropdown Selection
+    window.insertFromDropdown = function(selectElement) {
+        const val = selectElement.value;
+        if (!val) return; 
+        
+        insertVariable(val);
+        selectElement.selectedIndex = 0; 
+    };
+
+    // Variable Insertion Logic
+    window.insertVariable = function(variableName) {
+        if (!editor) return;
+        
+        const actualTag = '{' + '{ ' + variableName + ' }' + '}';
+        const doc = editor.getDoc();
+        const cursor = doc.getCursor();
+        doc.replaceRange(actualTag, cursor);
+        editor.focus();
+    };
 
     setInterval(function() {
         fetch("{{ route('campaigns.index') }}")

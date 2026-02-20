@@ -39,7 +39,7 @@
             </div>
         </div>
         @empty
-        <p class="text-gray-500 col-span-3">No sending activity to report yet.</p>
+        <p class="text-gray-700 col-span-3">No sending activity to report yet.</p>
         @endforelse
     </div>
 </div>

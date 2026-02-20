@@ -7,16 +7,13 @@ use App\Models\Contact;
 use Illuminate\Http\Request;
 use App\Models\ContactGroup;
 use App\Models\ContactGroupItem;
+use Illuminate\Support\Str;
 
 class ContactController extends Controller
 {
-
-
     public function index(Request $request)
     {
         $groups = ContactGroup::where('user_id', auth()->id())->get();
-
-
         $query = Contact::where('user_id', auth()->id())->with('groups');
 
         if ($request->has('group')) {
@@ -37,7 +34,6 @@ class ContactController extends Controller
             'name' => 'nullable|string|max:255',
             'group_id' => 'nullable|exists:contact_groups,id',
             'meta' => 'nullable|array',
-            'meta.*' => 'nullable|string|max:500',
         ]);
 
         // Verify group belongs to authenticated user
@@ -45,39 +41,40 @@ class ContactController extends Controller
             $groupExists = ContactGroup::where('user_id', auth()->id())
                 ->where('id', $r->group_id)
                 ->exists();
-            if (!$groupExists) {
-                return back()->withErrors(['group_id' => 'Invalid group selected.']);
-            }
+            if (!$groupExists) return back()->withErrors(['group_id' => 'Invalid group selected.']);
         }
 
-        // Prepare meta data - filter out empty values
-        $meta = null;
-        if ($r->filled('meta')) {
-            $meta = array_filter($r->meta, function ($value) {
-                return $value !== null && $value !== '';
-            });
-            $meta = !empty($meta) ? $meta : null;
-        }
-
+        //Find or Create the contact
         $contact = Contact::firstOrCreate(
-            [
-                'user_id' => auth()->id(),
-                'email' => $r->email
-            ],
-            [
-                'name' => $r->name,
-                'meta' => $meta,
-            ]
+            ['user_id' => auth()->id(), 'email' => $r->email],
+            ['name' => $r->name]
         );
 
-        // Update existing contact with new meta if it already existed
-        if ($r->filled('meta') || $r->filled('name')) {
-            $contact->update([
-                'name' => $r->name ?? $contact->name,
-                'meta' => $meta ?? $contact->meta,
-            ]);
+        //Handle Meta Personalization
+        if ($r->filled('meta')) {
+            $newMeta = [];
+            foreach ($r->meta as $key => $value) {
+                if ($value !== null && $value !== '') {
+                    // Sanitize the key: "Home City" becomes "home_city"
+                    $cleanKey = Str::snake(strtolower(trim($key)));
+                    $newMeta[$cleanKey] = trim($value);
+                }
+            }
+
+            // Merge with existing meta so we don't delete old data
+            $existingMeta = $contact->meta ?? [];
+            $mergedMeta = array_merge($existingMeta, $newMeta);
+            
+            $contact->meta = !empty($mergedMeta) ? $mergedMeta : null;
         }
 
+        if ($r->filled('name')) {
+            $contact->name = $r->name;
+        }
+
+        $contact->save();
+
+        //Handle Group Assignment
         if ($r->filled('group_id')) {
             ContactGroupItem::firstOrCreate([
                 'contact_id' => $contact->id,
@@ -85,8 +82,9 @@ class ContactController extends Controller
             ]);
         }
 
-        return back()->with('success', 'Contact added.');
+        return back()->with('success', 'Contact added successfully.');
     }
+
     public function import(Request $request)
     {
         // Validate the file upload
@@ -94,23 +92,16 @@ class ContactController extends Controller
             'file' => 'required|file|mimes:csv,txt|max:5120', // Max 5MB
         ]);
 
-        $file = $request->file('file');
-
-        // Open the file for reading
-        $handle = fopen($file->path(), 'r');
-
-        // Read the first row to get the column headers
+        $handle = fopen($request->file('file')->path(), 'r');
         $headers = fgetcsv($handle);
-        if (!$headers) {
-            return back()->withErrors(['file' => 'The uploaded file is empty or invalid.']);
-        }
+        
+        if (!$headers) return back()->withErrors(['file' => 'Invalid CSV.']);
 
-        // Clean up headers (lowercase, remove spaces) to make matching easier
+        // Sanitize Headers for Meta Keys
         $headers = array_map(function ($header) {
-            return strtolower(trim($header));
+            return Str::snake(strtolower(trim($header)));
         }, $headers);
 
-        // Find the index of the email and name columns
         $emailIndex = array_search('email', $headers);
         $nameIndex = array_search('name', $headers);
 
@@ -124,11 +115,8 @@ class ContactController extends Controller
         // Loop through the remaining rows in the CSV
         while (($row = fgetcsv($handle)) !== false) {
             $email = isset($row[$emailIndex]) ? trim($row[$emailIndex]) : null;
-
             // Skip rows with no email or invalid emails
-            if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                continue;
-            }
+            if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) continue;
 
             $name = ($nameIndex !== false && isset($row[$nameIndex])) ? trim($row[$nameIndex]) : null;
 
@@ -144,25 +132,21 @@ class ContactController extends Controller
                 }
             }
 
-            
+            // Using updateOrCreate ensures that repeated imports update the meta data
             $contact = Contact::updateOrCreate(
-                [
-                    'user_id' => auth()->id(),
-                    'email' => $email
-                ],
+                ['user_id' => auth()->id(), 'email' => $email],
                 [
                     'name' => $name,
-                    // If meta has items, save it, otherwise save null
                     'meta' => !empty($meta) ? $meta : null
                 ]
             );
+            
             $importedIds[] = $contact->id;
             $importedCount++;
         }
 
         fclose($handle);
 
-        
         return back()
                 ->with('success', "Successfully imported {$importedCount} contacts.")
                 ->with('imported_ids', $importedIds);
@@ -170,10 +154,7 @@ class ContactController extends Controller
 
     public function destroy(Contact $contact)
     {
-        if ($contact->user_id !== auth()->id()) {
-            abort(403);
-        }
-
+        if ($contact->user_id !== auth()->id()) abort(403);
         $contact->delete();
         return back()->with('success', 'Contact deleted.');
     }
