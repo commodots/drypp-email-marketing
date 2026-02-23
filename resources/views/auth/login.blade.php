@@ -135,6 +135,13 @@
                                    transition transform hover:-translate-y-0.5">
                         Sign In
                     </button>
+
+                    <p class="text-center text-sm text-gray-500 mt-6 dark:text-gray-400">
+                    Don't have an account? 
+                    <a href="{{ route('register') }}" class="text-blue-600 font-bold hover:underline transition">
+                        Create one for free
+                    </a>
+                </p>
                 </form>
 
                 <!-- Divider -->
