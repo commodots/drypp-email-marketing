@@ -4,15 +4,15 @@
 
 <div class="max-w-6xl mx-auto space-y-6">
 
-    {{-- Success and Error Alerts with IDs for JS --}}
+    {{-- Success and Error Alerts with auto-fade class --}}
     @if(session('success'))
-        <div id="successAlert" class="bg-green-50 border-l-4 border-green-500 p-4 mb-4 rounded-r-lg transition-opacity duration-500">
+        <div id="successAlert" class="auto-fade bg-green-50 border-l-4 border-green-500 p-4 mb-4 rounded-r-lg transition-opacity duration-500">
             <p class="text-green-700 text-sm font-bold">{{ session('success') }}</p>
         </div>
     @endif
 
     @if($errors->any())
-        <div id="errorAlert" class="bg-red-50 border-l-4 border-red-500 p-4 mb-4 rounded-r-lg transition-opacity duration-500">
+        <div id="errorAlert" class="auto-fade bg-red-50 border-l-4 border-red-500 p-4 mb-4 rounded-r-lg transition-opacity duration-500">
             <ul class="list-disc list-inside text-red-700 text-sm font-bold">
                 @foreach($errors->all() as $error)
                     <li>{{ $error }}</li>
@@ -78,7 +78,7 @@
                         </details>
                     </div>
                     
-                    <button class="w-full bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 transition mt-2">Add Contact</button>
+                    <button type="submit" data-loading-text="Adding..." class="w-full bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 transition mt-2">Add Contact</button>
                 </form>
             </div>
 
@@ -91,7 +91,7 @@
                     <form action="{{ route('groups.store') }}" method="POST" class="space-y-4">
                         @csrf
                         <input type="text" name="name" placeholder="e.g. Q1 VIPs" class="w-full border-gray-300 rounded-lg focus:ring-blue-500" required>
-                        <button class="w-full bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 transition">Create Group</button>
+                        <button type="submit" data-loading-text="Creating..." class="w-full bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 transition">Create Group</button>
                     </form>
                 </div>
 
@@ -104,7 +104,7 @@
                             <label class="block text-xs text-gray-500 mb-1">Upload CSV (Headers: email, name, country, etc.)</label>
                             <input type="file" name="file" accept=".csv" class="w-full text-sm text-gray-500 border rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" required>
                         </div>
-                        <button id="importBtn" type="submit" class="bg-gray-800 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-black transition flex items-center justify-center min-w-[100px]">
+                        <button id="importBtn" type="submit" data-loading-text="Importing..." class="bg-gray-800 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-black transition flex items-center justify-center min-w-[100px]">
                             Import
                         </button>
                     </form>
@@ -188,88 +188,5 @@
     </div>
 </div>
 
+@push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => {
-        const successAlert = document.getElementById('successAlert');
-        const errorAlert = document.getElementById('errorAlert');
-        
-        if (successAlert) {
-            successAlert.classList.add('opacity-0');
-            setTimeout(() => successAlert.remove(), 500); 
-        }
-        
-        if (errorAlert) {
-            errorAlert.classList.add('opacity-0');
-            setTimeout(() => errorAlert.remove(), 500);
-        }
-    }, 4000);
-
-    setTimeout(() => {
-        const recentBox = document.getElementById('recentImportBox');
-        if (recentBox) {
-            recentBox.classList.add('opacity-0');
-            setTimeout(() => recentBox.remove(), 500);
-        }
-    }, 15000); 
-});
-
-// Logic for the Import Loading State
-document.getElementById('importForm').addEventListener('submit', function() {
-    const btn = document.getElementById('importBtn');
-    btn.disabled = true;
-    btn.classList.add('opacity-75', 'cursor-not-allowed');
-    btn.innerHTML = `Importing...`;
-});
-
-// Logic for Dynamic Meta Fields
-let metaFieldCount = 0;
-
-function addMetaField() {
-    metaFieldCount++;
-    const container = document.getElementById('metaFieldsContainer');
-    
-    const fieldGroup = document.createElement('div');
-    fieldGroup.className = 'flex gap-2 items-start bg-white p-2 rounded border border-blue-100 shadow-sm';
-    fieldGroup.innerHTML = `
-        <div class="flex-1">
-            <input type="text" name="meta_keys[]" placeholder="Name (e.g. city)" class="w-full border-gray-300 rounded focus:ring-blue-500 text-xs" maxlength="50" required>
-        </div>
-        <div class="flex-1">
-            <input type="text" name="meta[]" placeholder="Value (e.g. Lagos)" class="w-full border-gray-300 rounded focus:ring-blue-500 text-xs" maxlength="500" required>
-        </div>
-        <button type="button" onclick="this.parentElement.remove()" class="text-red-400 hover:text-red-600 font-bold px-2 py-1.5 bg-red-50 hover:bg-red-100 rounded transition" title="Remove">✕</button>
-    `;
-    
-    container.appendChild(fieldGroup);
-}
-
-document.getElementById('addContactForm').addEventListener('submit', function(e) {
-    const keys = document.querySelectorAll('input[name="meta_keys[]"]');
-    const values = document.querySelectorAll('input[name="meta[]"]');
-    
-    const metaObject = {};
-    
-    keys.forEach((key, index) => {
-        if (key.value && values[index] && values[index].value) {
-            metaObject[key.value] = values[index].value;
-        }
-        
-        key.remove();
-        if(values[index]) {
-            values[index].remove();
-        }
-    });
-    
-    if (Object.keys(metaObject).length > 0) {
-        Object.entries(metaObject).forEach(([key, value]) => {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = `meta[${key}]`;
-            input.value = value;
-            this.appendChild(input);
-        });
-    }
-});
-</script>
-@endsection

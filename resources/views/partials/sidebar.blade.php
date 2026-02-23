@@ -24,10 +24,13 @@
             <a href="{{ route('admin.campaigns.index') }}" class="block hover:text-blue-400">
                 Campaigns
             </a>
-            <a href="{{ route('admin.packages.index') }}" class="block hover:text-blue-400">
+            <div>
+                <a href="{{ route('admin.packages.index') }}" class="block hover:text-blue-400">
                 Manage Packages
             </a>
-
+                <a href="{{ route('admin.packages.create') }}" class="text-neutral-300 ml-4 text-sm hover:text-blue-400">Create Package</a>
+            </div>
+            
             <a href="{{ route('admin.smtps.index') }}" class="block hover:text-blue-400">
                 SMTP Management
             </a>

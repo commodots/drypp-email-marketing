@@ -29,12 +29,12 @@ class PackageController extends Controller
         ]);
 
         Package::create($request->all());
-        return back()->with('success', 'Package created.');
+        return redirect()->route('admin.packages.index')->with('success', 'Package created successfully.');
     }
     public function destroy(Package $package)
     {
         $package->delete();
-        return back()->with('success', 'Package removed.');
+        return redirect()->route('admin.packages.index')->with('success', 'Package removed.');
     }
     public function edit(Package $package)
     {
@@ -81,7 +81,7 @@ class PackageController extends Controller
                 [
                     'name'    => $data['name'] ?? null,
                     'country' => $data['country'] ?? null,
-                    'meta'    => $meta 
+                    'meta'    => $meta
                 ]
             );
             $count++;

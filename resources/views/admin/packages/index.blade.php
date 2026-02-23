@@ -1,10 +1,16 @@
 @extends('layouts.app')
 @section('title', 'Manage Packages')
 @section('content')
+
 <div class="space-y-6">
+    @if(session('success'))
+        <div id="success-alert" class="p-4 mb-4 text-sm text-green-800 rounded-lg bg-green-50 font-bold border border-green-200 shadow-sm transition-all duration-500">
+            {{ session('success') }}
+        </div>
+    @endif
+
     <div class="flex justify-between items-center">
         <h2 class="text-xl font-bold text-gray-800">Subscription Packages</h2>
-        
         <a href="{{ route('admin.packages.create') }}" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition">
             + Create New Package
         </a>
@@ -44,4 +50,17 @@
         </table>
     </div>
 </div>
+
+@push('scripts')
+<script>
+    // Fades out the success alert automatically
+    setTimeout(() => {
+        let alert = document.getElementById('success-alert');
+        if(alert) {
+            alert.style.opacity = '0';
+            setTimeout(() => alert.remove(), 500);
+        }
+    }, 4000);
+</script>
+@endpush
 @endsection

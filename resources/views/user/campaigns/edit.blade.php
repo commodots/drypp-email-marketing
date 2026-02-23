@@ -12,6 +12,10 @@
             font-size: 14px;
             border: 1px solid #e2e8f0;
         }
+        .CodeMirror-readOnly {
+            opacity: 0.7;
+            background-color: #f8fafc; 
+        }
     </style>
 @endpush
 
@@ -23,7 +27,7 @@
     </div>
 
     <div class="bg-white rounded-xl shadow-sm border p-6">
-        <form action="{{ route('campaigns.update', $campaign) }}" method="POST">
+        <form id="campaignEditForm" action="{{ route('campaigns.update', $campaign) }}" method="POST">
             @csrf
             @method('PUT')
             
@@ -117,7 +121,7 @@
                         Delete Draft
                     </button>
 
-                    <button type="submit" class="bg-blue-600 text-white px-8 py-2 rounded-lg font-bold shadow-md hover:bg-blue-700 transition">
+                    <button type="submit" data-loading-text="Saving Changes..." class="bg-blue-600 text-white px-8 py-2 rounded-lg font-bold shadow-md hover:bg-blue-700 transition">
                         Save Changes
                     </button>
                 </div>
@@ -141,6 +145,7 @@
     document.addEventListener('DOMContentLoaded', function() {
         const textArea = document.getElementById('codeEditor');
         const formatRadios = document.querySelectorAll('input[name="format"]');
+        const editForm = document.getElementById('campaignEditForm');
         
         let editor = CodeMirror.fromTextArea(textArea, {
             mode: "htmlmixed",
@@ -194,6 +199,21 @@
 
         formatRadios.forEach(radio => radio.addEventListener('change', updateEditorMode));
         updateEditorMode(); 
+
+        if (editForm) {
+            editForm.addEventListener('submit', function() {
+                
+                editor.setOption('readOnly', 'nocursor');
+                
+                
+                const inputs = editForm.querySelectorAll('input, select');
+                inputs.forEach(input => {
+                    
+                    input.setAttribute('readonly', true);
+                    input.style.pointerEvents = 'none';
+                });
+            });
+        }
     });
 </script>
 @endsection

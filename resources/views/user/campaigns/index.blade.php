@@ -7,23 +7,11 @@
         <a href="{{ route('campaigns.create') }}" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold shadow-sm hover:bg-blue-700 transition">+ New Campaign</a>
     </div>
 
-    {{--  Added an ID and a quick fade-out script --}}
+    {{-- Added auto-fade class; removed manual script --}}
     @if(session('success'))
-        <div id="flash-message" class="p-4 mb-4 text-sm text-green-800 rounded-lg bg-green-50 font-bold border border-green-200 shadow-sm transition-opacity duration-500 ease-in-out">
+        <div id="flash-message" class="auto-fade p-4 mb-4 text-sm text-green-800 rounded-lg bg-green-50 font-bold border border-green-200 shadow-sm transition-opacity duration-500 ease-in-out">
             {{ session('success') }}
         </div>
-        
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                setTimeout(function() {
-                    let flash = document.getElementById('flash-message');
-                    if(flash) {
-                        flash.style.opacity = '0'; // Trigger the CSS fade
-                        setTimeout(() => flash.remove(), 500); // Remove from DOM after fade finishes
-                    }
-                }, 4000); // 4 seconds before it starts fading
-            });
-        </script>
     @endif
 
     <div>
@@ -69,7 +57,8 @@
                             @if($campaign->status == 'draft')
                                 <form action="{{ route('campaigns.send', $campaign) }}" method="POST" class="m-0 p-0 inline-block" onsubmit="return confirm('Are you sure you want to send this drafted campaign?');">
                                     @csrf
-                                    <button type="submit" class="text-green-600 hover:text-green-800 hover:underline text-xs font-bold bg-transparent border-none cursor-pointer p-0 transition">
+                                    
+                                    <button type="submit" data-loading-text="Sending..." class="text-green-600 hover:text-green-800 hover:underline text-xs font-bold bg-transparent border-none cursor-pointer p-0 transition">
                                         Send Campaign
                                     </button>
                                 </form>
