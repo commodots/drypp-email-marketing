@@ -4,7 +4,7 @@
 
 <div class="max-w-6xl mx-auto space-y-6">
 
-    {{-- Success and Error Alerts with auto-fade class --}}
+    {{-- Success and Error Alerts --}}
     @if(session('success'))
         <div id="successAlert" class="auto-fade bg-green-50 border-l-4 border-green-500 p-4 mb-4 rounded-r-lg transition-opacity duration-500">
             <p class="text-green-700 text-sm font-bold">{{ session('success') }}</p>
@@ -190,3 +190,65 @@
 
 @push('scripts')
 <script>
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        const recentBox = document.getElementById('recentImportBox');
+        if (recentBox) {
+            recentBox.classList.add('opacity-0');
+            setTimeout(() => recentBox.remove(), 500);
+        }
+    }, 15000); 
+});
+
+// Logic for Dynamic Meta Fields
+let metaFieldCount = 0;
+
+function addMetaField() {
+    metaFieldCount++;
+    const container = document.getElementById('metaFieldsContainer');
+    
+    const fieldGroup = document.createElement('div');
+    fieldGroup.className = 'flex gap-2 items-start bg-white p-2 rounded border border-blue-100 shadow-sm';
+    fieldGroup.innerHTML = `
+        <div class="flex-1">
+            <input type="text" name="meta_keys[]" placeholder="Name (e.g. city)" class="w-full border-gray-300 rounded focus:ring-blue-500 text-xs" maxlength="50" required>
+        </div>
+        <div class="flex-1">
+            <input type="text" name="meta[]" placeholder="Value (e.g. Lagos)" class="w-full border-gray-300 rounded focus:ring-blue-500 text-xs" maxlength="500" required>
+        </div>
+        <button type="button" onclick="this.parentElement.remove()" class="text-red-400 hover:text-red-600 font-bold px-2 py-1.5 bg-red-50 hover:bg-red-100 rounded transition" title="Remove">✕</button>
+    `;
+    
+    container.appendChild(fieldGroup);
+}
+
+document.getElementById('addContactForm').addEventListener('submit', function(e) {
+    const keys = document.querySelectorAll('input[name="meta_keys[]"]');
+    const values = document.querySelectorAll('input[name="meta[]"]');
+    
+    const metaObject = {};
+    
+    keys.forEach((key, index) => {
+        if (key.value && values[index] && values[index].value) {
+            metaObject[key.value] = values[index].value;
+        }
+        
+        key.remove();
+        if(values[index]) {
+            values[index].remove();
+        }
+    });
+    
+    if (Object.keys(metaObject).length > 0) {
+        Object.entries(metaObject).forEach(([key, value]) => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = `meta[${key}]`;
+            input.value = value;
+            this.appendChild(input);
+        });
+    }
+});
+</script>
+@endpush
+@endsection
