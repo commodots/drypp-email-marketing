@@ -96,7 +96,7 @@ class CampaignController extends Controller
             'format' => 'nullable|in:html,text', // Catch the format when going backward
         ]);
 
-        $defaultTemplate = "<!DOCTYPE html>\n<html>\n<body>\n<h1>Hello @{{ \$name }},</h1>\n<p>Start typing your message here...</p>\n</body>\n</html>";
+        $defaultTemplate = "<!DOCTYPE html>\n<html>\n<body>\n<h1>Hello {{ name }},</h1>\n<p>Start typing your message here...</p>\n</body>\n</html>";
 
         session()->flash('show_preview', true);
         
@@ -177,7 +177,7 @@ class CampaignController extends Controller
 
         if ($request->action === 'preview') {
             $data = $request->all();
-            $defaultTemplate = "<!DOCTYPE html>\n<html>\n<body>\n<h1>Hello @{{ \$name }},</h1>\n<p>Start typing your message here...</p>\n</body>\n</html>";
+            $defaultTemplate = "<!DOCTYPE html>\n<html>\n<body>\n<h1>Hello {{ name }},</h1>\n<p>Start typing your message here...</p>\n</body>\n</html>";
 
             session()->flash('show_preview', true);
             session()->flash('preview_body', $request->body);
@@ -191,10 +191,15 @@ class CampaignController extends Controller
         $isDraft = $request->input('action') === 'draft';
         $status = $isDraft ? 'draft' : 'queued';
 
+        // Check quota before creating campaign
+        if (!$isDraft && !Auth::user()->hasQuota(count($emails))) {
+            return redirect()->route('campaigns.create')
+                ->withErrors(['msg' => 'You do not have enough email quota for this campaign.']);
+        }
+
         // Save everything to DB, including the new rules
         $campaign = Auth::user()->campaigns()->create([
             'name' => $request->name,
-            'format' => $request->format,
             'status' => $status,
             // We save these so we know who it was for if we edit the draft later
             'recipient_type' => $request->recipient_type,
@@ -280,7 +285,6 @@ class CampaignController extends Controller
 
         $campaign->update([
             'name' => $request->name,
-            'format' => $request->format,
             'recipient_type' => $request->recipient_type,
             'group_id' => $request->group_id,
         ]);
@@ -315,6 +319,12 @@ class CampaignController extends Controller
 
         // Check the rules saved in the database
         if ($campaign->recipient_type === 'group') {
+            // Verify group still exists
+            $group = ContactGroup::where('user_id', Auth::id())->find($campaign->group_id);
+            if (!$group) {
+                return back()->withErrors(['msg' => 'Selected group no longer exists.']);
+            }
+
             $emails = ContactGroupItem::where('contact_group_id', $campaign->group_id)
                 ->join('contacts', 'contacts.id', '=', 'contact_group_items.contact_id')
                 ->pluck('contacts.email');

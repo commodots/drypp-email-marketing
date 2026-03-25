@@ -29,7 +29,7 @@ class SendCampaignEmails implements ShouldQueue
             })
             ->find($this->campaignId);
         
-        if (!$campaign) return;
+        if (!$campaign || !$campaign->user || !$campaign->user->subscription) return;
         
         $smtp = $campaign->smtp_id 
             ? SmtpServer::find($campaign->smtp_id)
@@ -69,13 +69,15 @@ class SendCampaignEmails implements ShouldQueue
             try {
                 // Send as HTML or Text depending on the campaign settings
                 if ($campaign->emailContent->format === 'html') {
-                    Mail::html($parsedBody, function($mail) use ($message, $parsedSubject) {
+                    Mail::html($parsedBody, function($mail) use ($message, $parsedSubject, $campaign) {
                         $mail->to($message->email)
+                             ->from($campaign->user->email)
                              ->subject($parsedSubject);
                     });
                 } else {
-                    Mail::raw($parsedBody, function($mail) use ($message, $parsedSubject) {
+                    Mail::raw($parsedBody, function($mail) use ($message, $parsedSubject, $campaign) {
                         $mail->to($message->email)
+                             ->from($campaign->user->email)
                              ->subject($parsedSubject);
                     });
                 }
@@ -83,7 +85,10 @@ class SendCampaignEmails implements ShouldQueue
                 $message->update(['status' => 'sent']);
                 $smtp->increment('sent_today');
                 $campaign->increment('sent');
-                $campaign->user->subscription->increment('emails_used');
+                
+                if ($campaign->user->subscription) {
+                    $campaign->user->subscription->increment('emails_used');
+                }
                 
             } catch (\Exception $e) {
                 $message->update(['status' => 'failed']);

@@ -59,13 +59,14 @@ class DispatchCampaigns extends Command
 
             Config::set('mail.mailers.dynamic_smtp', [
                 'transport' => 'smtp',
+                'scheme' => $server->encryption,
                 'host'       => $server->host,
                 'port'       => $server->port,
                 'username'   => $server->username,
                 'password'   => $server->password,
                 'encryption' => $server->encryption,
                 'timeout'    => null,
-                'local_domain' => env('MAIL_EHLO_DOMAIN'),
+                'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
             ]);
 
 

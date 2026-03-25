@@ -15,6 +15,7 @@ class Contact extends Model
         'email',
         'name',
         'meta',
+        'country'
     ];
 
 

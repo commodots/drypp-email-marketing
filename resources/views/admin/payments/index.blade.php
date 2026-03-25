@@ -27,7 +27,7 @@
                 <tr>
                     <td class="p-4 font-medium">{{ $user->name }}</td>
                     <td class="p-4">
-                        @if($user->subscription)
+                        @if($user->subscription?->package)
                             <span class="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
                                 {{ $user->subscription->package->name }}
                             </span>
@@ -36,7 +36,7 @@
                         @endif
                     </td>
                     <td class="p-4 text-gray-600">
-                        {{ $user->subscription ? $user->subscription->expires_at->format('M d, Y') : 'N/A' }}
+                        {{ $user->subscription?->expires_at?->format('M d, Y') ?? 'N/A' }}
                     </td>
                     <td class="p-4 text-right">
                         <form action="{{ route('admin.payments.override', $user) }}" method="POST" class="flex justify-end gap-2">

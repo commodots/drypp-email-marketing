@@ -24,8 +24,14 @@ class ResetSmtpCounters extends Command
      */
     public function handle()
     {
-        SmtpServer::query()->update(['sent_today' => 0]);
-        
-        $this->info('Limits reset for the new day.');
+        try {
+            SmtpServer::query()->update(['sent_today' => 0]);
+            $this->info('Limits reset for the new day.');
+        } catch (\Exception $e) {
+            $this->error('Failed to reset SMTP counters: ' . $e->getMessage());
+            return 1;
+        }
+
+        return 0;
     }
 }

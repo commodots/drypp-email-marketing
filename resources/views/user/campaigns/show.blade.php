@@ -49,28 +49,28 @@
                 <div class="bg-gray-50 p-4 border-b space-y-1">
                     <div class="flex items-start gap-2 text-sm">
                         <span class="font-bold text-gray-500 w-16 text-right">Subject:</span>
-                        <span class="font-medium text-gray-900">{{ $campaign->emailContent->subject ?? '(No Subject)' }}</span>
+                        <span class="font-medium text-gray-900">{{ $campaign->emailContent?->subject ?? '(No Subject)' }}</span>
                     </div>
                     <div class="flex items-start gap-2 text-sm">
                         <span class="font-bold text-gray-500 w-16 text-right">Format:</span>
-                        <span class="uppercase text-xs font-bold bg-blue-100 text-blue-700 px-1.5 rounded">{{ $campaign->format }}</span>
+                        <span class="uppercase text-xs font-bold bg-blue-100 text-blue-700 px-1.5 rounded">{{ $campaign->emailContent?->format ?? 'html' }}</span>
                     </div>
                 </div>
 
                 {{-- Content Body --}}
                 <div class="bg-white min-h-[400px]">
-                    @if(session('campaign_body') && $campaign->format === 'html')
+                    @if(session('campaign_body') && $campaign->emailContent?->format === 'html')
                         {{-- Fresh Session Preview (Raw HTML) --}}
                         <div class="p-6">
                             {!! session('campaign_body') !!}
                         </div>
-                    @elseif($campaign->format === 'html')
+                    @elseif($campaign->emailContent?->format === 'html')
                         {{-- Database HTML (Iframe for safety) --}}
-                        <iframe class="w-full h-[600px] border-0" srcdoc="{{ $campaign->emailContent->body ?? '' }}"></iframe>
+                        <iframe class="w-full h-[600px] border-0" srcdoc="{{ $campaign->emailContent?->body ?? '' }}"></iframe>
                     @else
                         {{-- Plain Text --}}
                         <div class="p-8 font-mono text-sm whitespace-pre-wrap text-gray-800 leading-relaxed bg-white">
-                            {{ $campaign->emailContent->body ?? '' }}
+                            {{ $campaign->emailContent?->body ?? '' }}
                         </div>
                     @endif
                 </div>

@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class CampaignMessage extends Model
 {
-    protected $guarded = [];
+    protected $fillable = ['campaign_id', 'email', 'status'];
 
     public function campaign()
     {

@@ -19,6 +19,11 @@ class Subscription extends Model
         'expires_at' => 'datetime'
     ];
 
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function package()
     {
         return $this->belongsTo(Package::class);

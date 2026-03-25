@@ -24,7 +24,6 @@ class Campaign extends Model
         'sent',
         'opens',
         'clicks',
-        'format',
         'recipient_type',
         'group_id',
         'excluded_contact_ids',

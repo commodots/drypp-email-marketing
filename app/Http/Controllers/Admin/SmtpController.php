@@ -17,11 +17,12 @@ class SmtpController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string',
-            'host' => 'required|string',
-            'port' => 'required|string',
-            'username' => 'required|string',
+            'name' => 'required|string|max:255',
+            'host' => 'required|string|max:255',
+            'port' => 'required|integer|min:1|max:65535',
+            'username' => 'required|string|max:255',
             'password' => 'required|string',
+            'encryption' => 'required|in:tls,ssl,none',
             'daily_limit' => 'required|integer|min:1'
         ]);
 
@@ -31,7 +32,7 @@ class SmtpController extends Controller
             'port' => $request->port,
             'username' => $request->username,
             'password' => $request->password,
-            'encryption' => 'tls',
+            'encryption' => $request->encryption,
             'daily_limit' => $request->daily_limit,
             'sent_today' => 0,
             'active' => true

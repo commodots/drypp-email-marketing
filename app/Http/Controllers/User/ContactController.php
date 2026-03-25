@@ -92,64 +92,94 @@ class ContactController extends Controller
             'file' => 'required|file|mimes:csv,txt|max:5120', // Max 5MB
         ]);
 
-        $handle = fopen($request->file('file')->path(), 'r');
-        $headers = fgetcsv($handle);
-        
-        if (!$headers) return back()->withErrors(['file' => 'Invalid CSV.']);
-
-        // Sanitize Headers for Meta Keys
-        $headers = array_map(function ($header) {
-            return Str::snake(strtolower(trim($header)));
-        }, $headers);
-
-        $emailIndex = array_search('email', $headers);
-        $nameIndex = array_search('name', $headers);
-
-        if ($emailIndex === false) {
-            return back()->withErrors(['file' => 'Your CSV must contain an "email" column header.']);
-        }
-
-        $importedCount = 0;
-        $importedIds = [];
-
-        // Loop through the remaining rows in the CSV
-        while (($row = fgetcsv($handle)) !== false) {
-            $email = isset($row[$emailIndex]) ? trim($row[$emailIndex]) : null;
-            // Skip rows with no email or invalid emails
-            if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) continue;
-
-            $name = ($nameIndex !== false && isset($row[$nameIndex])) ? trim($row[$nameIndex]) : null;
-
-            // Gather any extra columns to store in the 'meta' JSON field
-            $meta = [];
-            foreach ($headers as $index => $header) {
-                // Ignore the email and name columns, only grab the extra stuff
-                if ($index !== $emailIndex && $index !== $nameIndex && isset($row[$index])) {
-                    $value = trim($row[$index]);
-                    if ($value !== '') {
-                        $meta[$header] = $value;
-                    }
-                }
+        try {
+            $handle = fopen($request->file('file')->path(), 'r');
+            if (!$handle) {
+                return back()->withErrors(['file' => 'Unable to open CSV file.']);
             }
 
-            // Using updateOrCreate ensures that repeated imports update the meta data
-            $contact = Contact::updateOrCreate(
-                ['user_id' => auth()->id(), 'email' => $email],
-                [
-                    'name' => $name,
-                    'meta' => !empty($meta) ? $meta : null
-                ]
-            );
+            $headers = fgetcsv($handle);
             
-            $importedIds[] = $contact->id;
-            $importedCount++;
+            if (!$headers) {
+                fclose($handle);
+                return back()->withErrors(['file' => 'Invalid CSV.']);
+            }
+
+            if ($headers) {
+        $headers[0] = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $headers[0]);
+    }
+
+            // Sanitize Headers for Meta Keys
+            $headers = array_map(function ($header) {
+                return Str::snake(strtolower(trim($header)));
+            }, $headers);
+
+            $emailIndex = array_search('email', $headers);
+            $nameIndex = array_search('name', $headers);
+
+            if ($emailIndex === false) {
+                fclose($handle);
+                return back()->withErrors(['file' => 'Your CSV must contain an "email" column header.']);
+            }
+
+            $importedCount = 0;
+            $importedIds = [];
+
+            // Loop through the remaining rows in the CSV
+            while (($row = fgetcsv($handle)) !== false) {
+                $email = isset($row[$emailIndex]) ? trim($row[$emailIndex]) : null;
+                // Skip rows with no email or invalid emails
+                if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) continue;
+
+                $name = ($nameIndex !== false && isset($row[$nameIndex])) ? trim($row[$nameIndex]) : null;
+
+                // Gather any extra columns to store in the 'meta' JSON field
+                $meta = [];
+                foreach ($headers as $index => $header) {
+                    // Ignore the email and name columns, only grab the extra stuff
+                    if ($index !== $emailIndex && $index !== $nameIndex && isset($row[$index])) {
+                        $value = trim($row[$index]);
+                        if ($value !== '') {
+                            $meta[$header] = $value;
+                        }
+                    }
+                }
+
+                // Find or create contact first
+                $contact = Contact::firstOrCreate(
+                    ['user_id' => auth()->id(), 'email' => $email],
+                    ['name' => $name, 'meta' => null]
+                );
+
+                // Merge meta data like in store() method to preserve existing data
+                if (!empty($meta)) {
+                    $existingMeta = $contact->meta ?? [];
+                    $mergedMeta = array_merge($existingMeta, $meta);
+                    $contact->meta = $mergedMeta;
+                }
+
+                // Update name if provided and different
+                if ($name && $contact->name !== $name) {
+                    $contact->name = $name;
+                }
+
+                $contact->save();
+                
+                $importedIds[] = $contact->id;
+                $importedCount++;
+            }
+
+            fclose($handle);
+
+            return back()
+                    ->with('success', "Successfully imported {$importedCount} contacts.")
+                    ->with('imported_ids', $importedIds);
+        } catch (\Exception $e) {
+            if (isset($handle) && is_resource($handle)) {
+                fclose($handle);
+            }
+            return back()->withErrors(['file' => 'Error processing CSV: ' . $e->getMessage()]);
         }
-
-        fclose($handle);
-
-        return back()
-                ->with('success', "Successfully imported {$importedCount} contacts.")
-                ->with('imported_ids', $importedIds);
     }
 
     public function destroy(Contact $contact)
