@@ -1,4 +1,4 @@
-<aside class="w-64 min-h-screen px-4 py-6 text-white bg-gray-900">
+<aside class="w-64 min-h-screen px-4 py-6 text-white bg-gray-900 hidden lg:block">
     <div class="mb-8 text-2xl font-bold">
         Drypp
     </div>

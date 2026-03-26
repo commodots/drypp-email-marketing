@@ -15,10 +15,10 @@
     @endif
 
     <div>
-        <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+        <nav class="-mb-px flex space-x-4 md:space-x-8 overflow-x-auto pb-2" aria-label="Tabs">
             @foreach(['all' => 'All Campaigns', 'draft' => 'Drafts', 'queued' => 'Queued', 'sending' => 'Sending', 'completed' => 'Completed'] as $key => $label)
                 <a href="{{ route('campaigns.index', ['status' => $key === 'all' ? null : $key]) }}" 
-                   class="px-4 py-2 rounded-full text-xs font-bold border transition
+                   class="px-4 py-2 rounded-full text-xs font-bold border transition whitespace-nowrap
                    {{ (request('status') == $key) || (request('status') == null && $key == 'all') 
                       ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white text-gray-600 hover:border-blue-400' }}">
                     {{ $label }}
@@ -27,8 +27,8 @@
         </nav>
     </div>
 
-    <div class="bg-white border rounded-xl shadow-sm overflow-hidden">
-        <table class="w-full text-left">
+    <div class="bg-white border rounded-xl shadow-sm overflow-hidden overflow-x-auto">
+        <table class="w-full text-left min-w-[600px]">
             <thead class="bg-gray-50 text-xs font-bold uppercase text-gray-500 border-b">
                 <tr>
                     <th class="p-4">Name</th>
