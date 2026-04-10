@@ -4,6 +4,8 @@ namespace App\Jobs;
 
 use App\Models\Contact;
 use App\Models\ContactGroup;
+use App\Models\Sequence;
+use App\Jobs\SendSequenceEmail;
 use App\Models\ContactGroupItem;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -153,6 +155,19 @@ class ProcessContactImport implements ShouldQueue
 
     if (!empty($groupItems)) {
         ContactGroupItem::insert($groupItems);
+
+        // Trigger automation for the whole batch
+        $sequences = Sequence::where('group_id', $this->groupId)->with('steps')->get();
+        $contacts = Contact::whereIn('id', $contactIds)->get();
+
+        foreach ($sequences as $sequence) {
+            foreach ($sequence->steps as $step) {
+                foreach ($contacts as $contact) {
+                    dispatch(new SendSequenceEmail($contact, $step))
+                        ->delay(now()->addDays($step->delay_days));
+                }
+            }
+        }
     }
 }
 }

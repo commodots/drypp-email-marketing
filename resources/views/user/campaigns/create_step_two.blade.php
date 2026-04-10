@@ -18,6 +18,16 @@
 
 @section('content')
 <div class="max-w-6xl mx-auto py-8">
+    @if ($errors->any())
+    <div class="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700">
+        <p class="font-bold">Please fix the following:</p>
+        <ul class="list-disc list-inside text-sm">
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
     {{-- Progress Steps --}}
    <div class="flex items-center gap-4 mb-8 text-sm font-bold text-gray-400">
         <span class="text-gray-500">1. Setup</span>
@@ -38,6 +48,7 @@
                 <input type="hidden" name="name" value="{{ $data['name'] }}">
                 <input type="hidden" name="subject" value="{{ $data['subject'] }}">
                 <input type="hidden" name="recipient_type" value="{{ $data['recipient_type'] }}">
+                <input type="hidden" name="sender_email" value="{{ $data['sender_email'] ?? '' }}">
                 @if(isset($data['group_id'])) <input type="hidden" name="group_id" value="{{ $data['group_id'] }}"> @endif
                 @if(isset($data['contact_ids']))
                     @foreach($data['contact_ids'] as $id) <input type="hidden" name="contact_ids[]" value="{{ $id }}"> @endforeach

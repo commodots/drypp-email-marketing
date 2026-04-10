@@ -35,6 +35,22 @@
         @endif
     </div>
 
+    {{-- HIGH LEVEL STATS --}}
+    <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div class="p-6 bg-white border shadow-sm rounded-xl">
+            <p class="text-xs font-bold text-gray-500 uppercase">Open Rate</p>
+            <h2 class="text-3xl font-black text-blue-600">{{ number_format($stats['open_rate'] ?? 0, 1) }}%</h2>
+        </div>
+        <div class="p-6 bg-white border shadow-sm rounded-xl">
+            <p class="text-xs font-bold text-gray-500 uppercase">Click Rate</p>
+            <h2 class="text-3xl font-black text-green-600">{{ number_format($stats['click_rate'] ?? 0, 1) }}%</h2>
+        </div>
+        <div class="p-6 bg-white border shadow-sm rounded-xl">
+            <p class="text-xs font-bold text-gray-500 uppercase">Total Expected</p>
+            <h2 class="text-3xl font-black text-gray-800">{{ number_format($totalRecipients) }}</h2>
+        </div>
+    </div>
+
     {{--  GRID LAYOUT: Content (Left) vs Recipients (Right) --}}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
 

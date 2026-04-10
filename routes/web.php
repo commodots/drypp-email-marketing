@@ -6,6 +6,8 @@ use App\Http\Controllers\User\DashboardController;
 use App\Http\Controllers\User\ContactController;
 use App\Http\Controllers\User\ContactGroupController;
 use App\Http\Controllers\User\ReportController;
+use App\Http\Controllers\User\TrackingController;
+use App\Http\Controllers\User\AutomationController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboard;
 use App\Http\Controllers\Admin\CampaignController as AdminCampaignController;
 use App\Http\Controllers\Admin\PackageController as AdminPackageController;
@@ -54,6 +56,14 @@ Route::middleware('auth')->group(function () {
     Route::resource('campaigns', CampaignController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
     Route::post('campaigns/{campaign}/send', [CampaignController::class, 'send'])->name('campaigns.send');
 
+    // Step Management for Automations
+    Route::post('/automation/{automation}/steps', [AutomationController::class, 'addStep'])->name('automation.addStep');
+    Route::put('/automation/steps/{step}', [AutomationController::class, 'updateStep'])->name('automation.updateStep');
+    Route::delete('/automation/steps/{step}', [AutomationController::class, 'destroyStep'])->name('automation.destroyStep');
+
+    // Your existing resource
+    Route::resource('automation', AutomationController::class);
+
     // Reports
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::post('/reports/toggle', [ReportController::class, 'toggleAutoReport'])->name('reports.toggle');
@@ -74,6 +84,10 @@ Route::middleware('auth')->group(function () {
     Route::resource('groups', ContactGroupController::class);
 
 
+
+    // Tracking Routes
+    Route::get('/track/open/{id}', [TrackingController::class, 'open'])->name('track.open');
+    Route::get('/track/click/{id}', [TrackingController::class, 'click'])->name('track.click');
 
     Route::get('/settings', fn() => view('settings.index'))->name('settings.index');
 });

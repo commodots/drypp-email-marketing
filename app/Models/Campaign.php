@@ -18,6 +18,7 @@ class Campaign extends Model
         'user_id',
         'name',
         'type',
+        'sender_email',
         'status',
         'smtp_id',
         'total_emails',
@@ -30,8 +31,8 @@ class Campaign extends Model
     ];
 
     protected $casts = [
-    'excluded_contact_ids' => 'array', 
-];
+        'excluded_contact_ids' => 'array',
+    ];
 
     public function user()
     {

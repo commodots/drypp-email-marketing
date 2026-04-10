@@ -18,25 +18,27 @@ class SendCampaignEmails implements ShouldQueue
 
     protected $campaignId;
 
-    public function __construct($campaignId) {
+    public function __construct($campaignId)
+    {
         $this->campaignId = $campaignId;
     }
 
-    public function handle() {
+    public function handle()
+    {
         $campaign = Campaign::with('emailContent', 'user.subscription')
-            ->whereHas('messages', function($q) {
+            ->whereHas('messages', function ($q) {
                 $q->where('status', 'pending');
             })
             ->find($this->campaignId);
-        
+
         if (!$campaign || !$campaign->user || !$campaign->user->subscription) return;
-        
-        $smtp = $campaign->smtp_id 
+
+        $smtp = $campaign->smtp_id
             ? SmtpServer::find($campaign->smtp_id)
             : SmtpServer::where('active', 1)
-                ->whereColumn('sent_today', '<', 'daily_limit')
-                ->orderBy('sent_today', 'asc')
-                ->first();
+            ->whereColumn('sent_today', '<', 'daily_limit')
+            ->orderBy('sent_today', 'asc')
+            ->first();
 
         if (!$smtp || !$campaign->user->hasQuota()) return;
 
@@ -49,14 +51,17 @@ class SendCampaignEmails implements ShouldQueue
             'mail.mailers.smtp.encryption' => $smtp->encryption,
         ]);
 
+        // Force refresh the mailer instance
+        Mail::purge('smtp');
+
         // Get next pending message to send
         $message = $campaign->messages()->where('status', 'pending')->first();
-        
+
         if ($message) {
             // Retrieve the actual Contact record to get their custom data
             $contact = Contact::where('email', $message->email)
-                              ->where('user_id', $campaign->user_id)
-                              ->first();
+                ->where('user_id', $campaign->user_id)
+                ->first();
 
             // Fetch the raw subject and body
             $rawSubject = $campaign->emailContent->subject;
@@ -66,30 +71,32 @@ class SendCampaignEmails implements ShouldQueue
             $parsedSubject = $this->replaceVariables($rawSubject, $contact);
             $parsedBody = $this->replaceVariables($rawBody, $contact);
 
+            // Inject Tracking
+            $parsedBody = $this->injectTracking($parsedBody, $message, $campaign->emailContent->format);
+
             try {
                 // Send as HTML or Text depending on the campaign settings
                 if ($campaign->emailContent->format === 'html') {
-                    Mail::html($parsedBody, function($mail) use ($message, $parsedSubject, $campaign) {
+                    Mail::html($parsedBody, function ($mail) use ($message, $parsedSubject, $campaign) {
                         $mail->to($message->email)
-                             ->from($campaign->user->email)
-                             ->subject($parsedSubject);
+                            ->from($campaign->user->email)
+                            ->subject($parsedSubject);
                     });
                 } else {
-                    Mail::raw($parsedBody, function($mail) use ($message, $parsedSubject, $campaign) {
+                    Mail::raw($parsedBody, function ($mail) use ($message, $parsedSubject, $campaign) {
                         $mail->to($message->email)
-                             ->from($campaign->user->email)
-                             ->subject($parsedSubject);
+                            ->from($campaign->user->email)
+                            ->subject($parsedSubject);
                     });
                 }
-                
+
                 $message->update(['status' => 'sent']);
                 $smtp->increment('sent_today');
                 $campaign->increment('sent');
-                
+
                 if ($campaign->user->subscription) {
                     $campaign->user->subscription->increment('emails_used');
                 }
-                
             } catch (\Exception $e) {
                 $message->update(['status' => 'failed']);
             }
@@ -107,7 +114,7 @@ class SendCampaignEmails implements ShouldQueue
         }
 
         // Use Regex to find everything inside {{ }}
-        return preg_replace_callback('/\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/', function($matches) use ($contact) {
+        return preg_replace_callback('/\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/', function ($matches) use ($contact) {
             $key = trim($matches[1]); // e.g., 'name', 'email', or 'meta.address'
 
             if ($key === 'name') return $contact->name ?? '';
@@ -121,7 +128,31 @@ class SendCampaignEmails implements ShouldQueue
             }
 
             // If a user types {{ something_random }} that isn't a variable, we just remove it
-            return ''; 
+            return '';
         }, $text);
+    }
+
+    /**
+     * Injects tracking pixel and wraps links.
+     */
+    private function injectTracking($body, $message, $format)
+    {
+        if ($format !== 'html') {
+            return $body;
+        }
+
+        // 1. Wrap Links for Click Tracking
+        // Replaces href="url" with href="track-url"
+        $body = preg_replace_callback('/<a\s+(?:[^>]*?\s+)?href=(["\'])(.*?)\1/', function ($matches) use ($message) {
+            $url = $matches[2];
+            $trackingUrl = url("/track/click/{$message->id}?redirect=" . urlencode($url));
+            return str_replace($url, $trackingUrl, $matches[0]);
+        }, $body);
+
+        // 2. Append Open Tracking Pixel
+        $pixelUrl = url("/track/open/{$message->id}");
+        $body .= '<img src="' . $pixelUrl . '" width="1" height="1" style="display:none !important;" />';
+
+        return $body;
     }
 }

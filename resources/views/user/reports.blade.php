@@ -1,46 +1,56 @@
 @extends('layouts.app')
 @section('title', 'Reports')
 @section('content')
-<div class="space-y-6">
-    <div class="flex justify-between items-center">
-        
-        <div class="flex items-center space-x-4">
-            <form action="{{ route('reports.toggle') }}" method="POST" class="flex items-center space-x-2">
-                @csrf
-                <span class="text-sm text-gray-600">Auto email report</span>
-                <input type="checkbox" name="enabled" onchange="this.form.submit()" class="rounded text-blue-600" {{ auth()->user()->auto_reports ? 'checked' : '' }}>
-            </form>
-        </div>
-    </div>
+    <div class="space-y-6">
+        <div class="flex justify-between items-center">
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        @forelse($campaigns as $campaign)
-        <div class="bg-white p-6 rounded shadow-sm border">
-            <div class="flex justify-between items-start mb-4">
-                <h3 class="font-bold">{{ $campaign->name }}</h3>
-                <a href="{{ route('reports.export', $campaign) }}" class="text-xs text-blue-600 hover:underline">Export CSV</a>
-            </div>
-            
-            <div class="grid grid-cols-3 gap-4 text-center">
-                <div>
-                    <p class="text-xs text-gray-500 uppercase">Opens</p>
-                    <p class="text-xl font-bold text-blue-600">{{ $campaign->opens }}</p>
-                </div>
-                <div>
-                    <p class="text-xs text-gray-500 uppercase">Clicks</p>
-                    <p class="text-xl font-bold text-green-600">{{ $campaign->clicks }}</p>
-                </div>
-                <div>
-                    <p class="text-xs text-gray-500 uppercase">Bounces</p>
-                    <p class="text-xl font-bold text-red-600">
-                        {{ ceil($campaign->sent * 0.01) }}
-                    </p>
-                </div>
+            <div class="flex items-center space-x-4">
+                <form action="{{ route('reports.toggle') }}" method="POST" class="flex items-center space-x-2">
+                    @csrf
+                    <span class="text-sm text-gray-600">Auto email report</span>
+                    <input type="checkbox" name="enabled" onchange="this.form.submit()" class="rounded text-blue-600"
+                        {{ auth()->user()->auto_reports ? 'checked' : '' }}>
+                </form>
             </div>
         </div>
-        @empty
-        <p class="text-gray-700 col-span-3">No sending activity to report yet.</p>
-        @endforelse
+
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            @forelse($campaigns as $campaign)
+                <div class="p-6 bg-white border shadow-sm rounded-xl">
+                    <div class="flex items-start justify-between mb-6">
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-800">{{ $campaign->name }}</h3>
+                            <p class="text-xs text-gray-500">Sent to {{ number_format($campaign->sent) }} recipients</p>
+                        </div>
+                        <a href="{{ route('reports.export', $campaign) }}"
+                            class="text-xs text-blue-600 hover:underline">Export CSV</a>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Open Rate</p>
+                            <p class="text-2xl font-black text-blue-600">
+                                {{ $campaign->sent > 0 ? number_format(($campaign->opens / $campaign->sent) * 100, 1) : 0 }}%
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Click Rate</p>
+                            <p class="text-2xl font-black text-green-600">
+                                {{ $campaign->sent > 0 ? number_format(($campaign->clicks / $campaign->sent) * 100, 1) : 0 }}%
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-gray-50">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-500">Estimated Bounces</span>
+                            <span class="font-semibold text-red-500">{{ ceil($campaign->sent * 0.01) }}</span>
+                        </div>
+                    </div>
+                </div>
+            @empty
+                <p class="text-gray-700 col-span-3">No sending activity to report yet.</p>
+            @endforelse
+        </div>
     </div>
-</div>
 @endsection

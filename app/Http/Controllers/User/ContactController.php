@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Contact;
 use Illuminate\Http\Request;
 use App\Models\ContactGroup;
+use App\Models\Sequence;
+use App\Jobs\SendSequenceEmail;
 use App\Models\ContactGroupItem;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -84,6 +86,15 @@ class ContactController extends Controller
                 'contact_id' => $contact->id,
                 'contact_group_id' => $r->group_id
             ]);
+
+            // Trigger Automation
+            $sequences = Sequence::where('group_id', $r->group_id)->with('steps')->get();
+            foreach ($sequences as $sequence) {
+                foreach ($sequence->steps as $step) {
+                    dispatch(new SendSequenceEmail($contact, $step))
+                        ->delay(now()->addDays($step->delay_days));
+                }
+            }
         }
 
         return back()->with('success', 'Contact added successfully.');

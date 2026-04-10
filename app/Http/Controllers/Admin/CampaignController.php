@@ -22,31 +22,31 @@ class CampaignController extends Controller
         }
 
         $campaigns = $query->get();
-        $smtps = SmtpServer::where('active', true)->get(); 
+        $smtps = SmtpServer::where('active', true)->get();
 
         return view('admin.campaigns.index', compact('campaigns', 'smtps', 'status'));
     }
 
     public function assignSmtp(Request $request, Campaign $campaign)
     {
-        // Only allow assigning SMTP to queued campaigns
-        if ($campaign->status !== 'queued') {
-            return back()->withErrors(['msg' => 'Can only assign SMTP to queued campaigns.']);
+        // ALLOW assignment if it is queued OR paused
+        if (!in_array($campaign->status, ['queued', 'paused'])) {
+            return back()->withErrors(['msg' => 'Can only assign SMTP to queued or paused campaigns.']);
         }
 
         $request->validate(['smtp_id' => 'required|exists:smtp_servers,id']);
 
         $campaign->update([
             'smtp_id' => $request->smtp_id,
-            'status' => 'sending'
+            'status' => 'sending' // This effectively "Resumes" it too
         ]);
 
-        // Reset failed messages so they can be retried
+        // Only reset messages if we are starting fresh or moving from a fail state
         $campaign->messages()->where('status', 'failed')->update([
             'status' => 'pending'
         ]);
 
-        return back()->with('success', 'Campaign assigned to SMTP and started.');
+        return back()->with('success', 'Campaign server updated and status set to sending.');
     }
 
     public function toggleStatus(Campaign $campaign)
