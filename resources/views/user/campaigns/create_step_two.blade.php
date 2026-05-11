@@ -49,6 +49,7 @@
                 <input type="hidden" name="subject" value="{{ $data['subject'] }}">
                 <input type="hidden" name="recipient_type" value="{{ $data['recipient_type'] }}">
                 <input type="hidden" name="sender_email" value="{{ $data['sender_email'] ?? '' }}">
+                <input type="hidden" name="type" value="{{ $data['type'] ?? 'marketing' }}">
                 @if(isset($data['group_id'])) <input type="hidden" name="group_id" value="{{ $data['group_id'] }}"> @endif
                 @if(isset($data['contact_ids']))
                     @foreach($data['contact_ids'] as $id) <input type="hidden" name="contact_ids[]" value="{{ $id }}"> @endforeach

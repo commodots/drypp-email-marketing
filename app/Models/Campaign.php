@@ -43,6 +43,10 @@ class Campaign extends Model
     {
         return $this->belongsTo(SmtpServer::class, 'smtp_id');
     }
+    public function smtps()
+{
+    return $this->belongsToMany(SmtpServer::class, 'campaign_smtp');
+}
 
     public function emailContent()
     {

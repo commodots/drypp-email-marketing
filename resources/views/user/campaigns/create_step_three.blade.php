@@ -20,7 +20,11 @@
             <div>
                 <h2 class="text-lg font-bold text-gray-800">Final Review</h2>
                 <p class="text-sm text-gray-500">
-                    You are about to send <strong>"{{ $data['subject'] }}"</strong> to:
+                    You are about to send <strong>"{{ $data['subject'] }}"</strong> as a
+                    <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wide">
+                        {{ ucfirst($data['type'] ?? 'marketing') }}
+                    </span>
+                    message to:
                     <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wide">
                         {{ $groupName }}
                     </span>

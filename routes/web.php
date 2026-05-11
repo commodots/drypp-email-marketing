@@ -13,10 +13,14 @@ use App\Http\Controllers\Admin\CampaignController as AdminCampaignController;
 use App\Http\Controllers\Admin\PackageController as AdminPackageController;
 use App\Http\Controllers\Admin\SmtpController;
 use App\Http\Controllers\Admin\PaymentController;
+use App\Http\Controllers\WebhookController;
 
 Route::get('/', function () {
     return redirect()->route('login');
 });
+
+// Webhook Routes (no auth required)
+Route::post('/webhooks/sendgrid', [WebhookController::class, 'sendgrid'])->name('webhooks.sendgrid');
 
 // Admin Routes
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
@@ -86,7 +90,7 @@ Route::middleware('auth')->group(function () {
 
 
     // Tracking Routes
-    Route::get('/track/open/{id}', [TrackingController::class, 'open'])->name('track.open');
+    Route::get('/track/open/{uuid}', [TrackingController::class, 'open'])->name('track.open');
     Route::get('/track/click/{id}', [TrackingController::class, 'click'])->name('track.click');
 
     Route::get('/settings', fn() => view('settings.index'))->name('settings.index');

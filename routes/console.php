@@ -9,3 +9,6 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('smtp:reset')->daily();
+Schedule::command('smtp:reset-hourly')->hourly();
+Schedule::command('emails:fetch-replies')->everyFiveMinutes();
+Schedule::command('warmup:progress')->daily();

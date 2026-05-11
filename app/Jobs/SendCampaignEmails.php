@@ -5,12 +5,13 @@ namespace App\Jobs;
 use App\Models\Campaign;
 use App\Models\SmtpServer;
 use App\Models\Contact;
+use App\Services\Mail\MailManager;
+use App\Services\Rotation\InboxRotator;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Mail;
 
 class SendCampaignEmails implements ShouldQueue
 {
@@ -33,26 +34,13 @@ class SendCampaignEmails implements ShouldQueue
 
         if (!$campaign || !$campaign->user || !$campaign->user->subscription) return;
 
-        $smtp = $campaign->smtp_id
-            ? SmtpServer::find($campaign->smtp_id)
-            : SmtpServer::where('active', 1)
-            ->whereColumn('sent_today', '<', 'daily_limit')
-            ->orderBy('sent_today', 'asc')
-            ->first();
+        // Use InboxRotator to pick the best SMTP server
+        $rotator = app(InboxRotator::class);
+        $smtp = $rotator->pick($campaign);
 
-        if (!$smtp || !$campaign->user->hasQuota()) return;
-
-        // Configure Mailer with complete SMTP settings
-        config([
-            'mail.mailers.smtp.host' => $smtp->host,
-            'mail.mailers.smtp.port' => $smtp->port,
-            'mail.mailers.smtp.username' => $smtp->username,
-            'mail.mailers.smtp.password' => $smtp->password,
-            'mail.mailers.smtp.encryption' => $smtp->encryption,
-        ]);
-
-        // Force refresh the mailer instance
-        Mail::purge('smtp');
+        if (!$smtp || !$campaign->user->hasQuota()) {
+            return; // No available inbox or quota exceeded
+        }
 
         // Get next pending message to send
         $message = $campaign->messages()->where('status', 'pending')->first();
@@ -71,34 +59,43 @@ class SendCampaignEmails implements ShouldQueue
             $parsedSubject = $this->replaceVariables($rawSubject, $contact);
             $parsedBody = $this->replaceVariables($rawBody, $contact);
 
-            // Inject Tracking
+            // Inject Tracking with UUID
             $parsedBody = $this->injectTracking($parsedBody, $message, $campaign->emailContent->format);
 
             try {
-                // Send as HTML or Text depending on the campaign settings
-                if ($campaign->emailContent->format === 'html') {
-                    Mail::html($parsedBody, function ($mail) use ($message, $parsedSubject, $campaign) {
-                        $mail->to($message->email)
-                            ->from($campaign->user->email)
-                            ->subject($parsedSubject);
-                    });
-                } else {
-                    Mail::raw($parsedBody, function ($mail) use ($message, $parsedSubject, $campaign) {
-                        $mail->to($message->email)
-                            ->from($campaign->user->email)
-                            ->subject($parsedSubject);
-                    });
-                }
+                // Use the new provider system
+                $provider = MailManager::resolve($smtp);
+
+                $provider->send([
+                    'to' => $message->email,
+                    'subject' => $parsedSubject,
+                    'body' => $parsedBody,
+                    'smtp' => $smtp,
+                    'message' => $message, // Pass message for provider_message_id storage
+                ]);
 
                 $message->update(['status' => 'sent']);
                 $smtp->increment('sent_today');
+                $smtp->increment('sent_this_hour');
+                $smtp->update(['last_sent_at' => now()]);
                 $campaign->increment('sent');
 
                 if ($campaign->user->subscription) {
                     $campaign->user->subscription->increment('emails_used');
                 }
+
+                // Add random delay for next send (anti-spam)
+                $delay = rand(20, 90);
+                dispatch(new SendCampaignEmails($this->campaignId))
+                    ->delay(now()->addSeconds($delay));
+
             } catch (\Exception $e) {
                 $message->update(['status' => 'failed']);
+                $smtp->increment('failure_count');
+
+                if ($smtp->failure_count > 5) {
+                    $smtp->update(['is_blocked' => true]);
+                }
             }
         }
     }
@@ -145,12 +142,12 @@ class SendCampaignEmails implements ShouldQueue
         // Replaces href="url" with href="track-url"
         $body = preg_replace_callback('/<a\s+(?:[^>]*?\s+)?href=(["\'])(.*?)\1/', function ($matches) use ($message) {
             $url = $matches[2];
-            $trackingUrl = url("/track/click/{$message->id}?redirect=" . urlencode($url));
+            $trackingUrl = url("/track/click/{$message->message_uuid}?redirect=" . urlencode($url));
             return str_replace($url, $trackingUrl, $matches[0]);
         }, $body);
 
         // 2. Append Open Tracking Pixel
-        $pixelUrl = url("/track/open/{$message->id}");
+        $pixelUrl = url("/track/open/{$message->message_uuid}");
         $body .= '<img src="' . $pixelUrl . '" width="1" height="1" style="display:none !important;" />';
 
         return $body;

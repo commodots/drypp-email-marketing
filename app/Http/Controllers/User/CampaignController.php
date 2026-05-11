@@ -10,6 +10,7 @@ use App\Models\ContactGroupItem;
 use App\Models\ContactGroup;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class CampaignController extends Controller
 {
@@ -105,6 +106,7 @@ class CampaignController extends Controller
             'name' => 'required|string|max:255',
             'subject' => 'required|string|max:255',
             'sender_email' => 'required|email|max:255',
+            'type' => 'required|in:marketing,cold,transactional',
             'recipient_type' => 'required|in:group,all,except',
             'group_id' => 'nullable|required_if:recipient_type,group',
             'excluded_contact_ids' => 'nullable|array',
@@ -131,6 +133,7 @@ class CampaignController extends Controller
             'name' => 'required|string',
             'subject' => 'required|string',
             'sender_email' => 'required|email',
+            'type' => 'required|in:marketing,cold,transactional',
             'body' => 'nullable|string',
             'format' => 'required|in:html,text',
             'recipient_type' => 'required|in:group,all,except',
@@ -179,6 +182,7 @@ class CampaignController extends Controller
             'name' => 'required|string|max:255',
             'subject' => 'required|string|max:255',
             'sender_email' => 'required|email|max:255',
+            'type' => 'required|in:marketing,cold,transactional',
             'body' => 'nullable|string',
             'format' => 'required|in:html,text',
             'recipient_type' => 'required|in:group,all,except',
@@ -237,7 +241,7 @@ class CampaignController extends Controller
             'name' => $request->name,
             'status' => $status,
             'sender_email' => $request->sender_email,
-            'type' => 'bulk', // Defaulting to bulk, adjust if your UI provides this
+            'type' => $request->type ?? 'marketing',
             // We save these so we know who it was for if we edit the draft later
             'recipient_type' => $request->recipient_type,
             'group_id' => $request->group_id,
@@ -288,6 +292,7 @@ class CampaignController extends Controller
                 'campaign_id' => $campaign->id,
                 'email' => $email,
                 'status' => 'pending',
+                'message_uuid' => (string) Str::uuid(),
                 'created_at' => now(),
                 'updated_at' => now(),
             ];

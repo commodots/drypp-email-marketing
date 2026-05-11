@@ -8,9 +8,9 @@ use Illuminate\Http\Request;
 
 class TrackingController extends Controller
 {
-    public function open($id)
+    public function open($uuid)
     {
-        $message = CampaignMessage::with('campaign')->where('id', $id)->first();
+        $message = CampaignMessage::with('campaign')->where('message_uuid', $uuid)->firstOrFail();
 
         if ($message && !$message->opened_at) {
             $message->update(['opened_at' => now()]);
@@ -23,9 +23,9 @@ class TrackingController extends Controller
         ]);
     }
 
-    public function click(Request $request, $id)
+    public function click(Request $request, $uuid)
     {
-        $message = CampaignMessage::with('campaign')->where('id', $id)->first();
+        $message = CampaignMessage::with('campaign')->where('message_uuid', $uuid)->firstOrFail();
 
         if ($message && !$message->clicked_at) {
             $message->update(['clicked_at' => now()]);

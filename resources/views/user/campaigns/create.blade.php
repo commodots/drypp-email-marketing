@@ -52,9 +52,33 @@
                                     value="{{ old('sender_email', auth()->user()->email) }}"
                                     placeholder="hello@yourcompany.com" class="w-full border-gray-300 rounded-lg shadow-sm"
                                     required>
-                                <p class="mt-1 text-xs text-gray-500">This is the email address your subscribers will see.
-                                </p>
+                                <p class="mt-1 text-xs text-gray-500">This is the email address your subscribers will see.</p>
                             </div>
+                        </div>
+                    </div>
+
+                    <div class="border-t pt-4">
+                        <label class="block text-sm font-semibold text-gray-700 mb-4">Campaign Type</label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <label class="relative border rounded-lg p-4 cursor-pointer hover:bg-gray-50 flex items-center gap-3 transition-colors">
+                                <input type="radio" name="type" value="marketing"
+                                    {{ old('type', 'marketing') == 'marketing' ? 'checked' : '' }}
+                                    class="h-4 w-4 text-blue-600 focus:ring-blue-500">
+                                <div>
+                                    <div class="font-bold text-gray-900">Marketing Campaign</div>
+                                    <div class="text-gray-500 text-sm">Send promotional or newsletter email campaigns to many subscribers.</div>
+                                </div>
+                            </label>
+
+                            <label class="relative border rounded-lg p-4 cursor-pointer hover:bg-gray-50 flex items-center gap-3 transition-colors">
+                                <input type="radio" name="type" value="transactional"
+                                    {{ old('type') == 'transactional' ? 'checked' : '' }}
+                                    class="h-4 w-4 text-blue-600 focus:ring-blue-500">
+                                <div>
+                                    <div class="font-bold text-gray-900">Transactional Email</div>
+                                    <div class="text-gray-500 text-sm">Send one-to-one transactional messages like receipts or alerts.</div>
+                                </div>
+                            </label>
                         </div>
                     </div>
 
