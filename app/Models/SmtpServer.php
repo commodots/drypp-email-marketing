@@ -25,7 +25,7 @@ class SmtpServer extends Model
         'imap_port',
         'imap_username',
         'imap_password',
-        'is_active',
+        'active',
         'is_rotating',
         'hourly_limit',
         'sent_this_hour',
@@ -38,13 +38,20 @@ class SmtpServer extends Model
         'warmup_day',
         'warmup_daily_limit',
         'warmup_sent_today',
-        'warmup_last_sent_at'
+        'warmup_last_sent_at',
+        'health_score',
+         'placement_score',
+         'sent_last_24h', 'opens_last_24h',
+        'clicks_last_24h', 'replies_last_24h', 'bounces_last_24h', 'fails_last_24h',
+        'inbox_hits', 'spam_hits', 'hourly_limit', 'last_health_check_at'
     ];
 
     protected $casts = [
         'password' => 'encrypted',
         'imap_password' => 'encrypted',
         'secret_key' => 'encrypted',
+        'last_health_check_at' => 'datetime',
+        'is_blocked' => 'boolean',
     ];
 
     public function campaigns()

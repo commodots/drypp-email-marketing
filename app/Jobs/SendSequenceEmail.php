@@ -9,6 +9,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use App\Models\SmtpServer;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Queue\SerializesModels;
+use App\Services\Mail\MailManager;
 
 class SendSequenceEmail implements ShouldQueue
 {
@@ -25,25 +26,31 @@ class SendSequenceEmail implements ShouldQueue
 
     public function handle()
     {
-        $smtp = SmtpServer::where('active', 1)->first();
+        // Pick the best SMTP using the Rotator
+        $rotator = app(\App\Services\Rotation\InboxRotator::class);
+        $smtp = $rotator->pick(); 
+
         if (!$smtp) return;
 
-        config([
-            'mail.mailers.smtp.host' => $smtp->host,
-            'mail.mailers.smtp.port' => $smtp->port,
-            'mail.mailers.smtp.username' => $smtp->username,
-            'mail.mailers.smtp.password' => $smtp->password,
-            'mail.mailers.smtp.encryption' => $smtp->encryption,
-        ]);
-
-        // Force refresh the mailer instance
-        Mail::purge('smtp');
-
+        $provider = MailManager::resolve($smtp);
         $body = str_replace('{{ name }}', $this->contact->name ?? 'there', $this->step->body);
 
-        Mail::html($body, function ($mail) {
-            $mail->to($this->contact->email)
-                ->subject($this->step->subject);
-        });
+        $provider->send([
+            'to' => $this->contact->email,
+            'subject' => $this->step->subject,
+            'body' => $body,
+            'smtp' => $smtp,
+        ]);
+
+        //Stats & Seed Checking
+        $smtp->increment('sent_last_24h');
+        $smtp->increment('sent_today');
+
+        if (rand(1, 50) === 1) {
+            $seed = SeedInbox::inRandomOrder()->first();
+            if ($seed) {
+                dispatch(new SendSeedEmailJob($smtp, $seed));
+            }
+        }
     }
 }

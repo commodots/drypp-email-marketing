@@ -10,5 +10,8 @@ Artisan::command('inspire', function () {
 
 Schedule::command('smtp:reset')->daily();
 Schedule::command('smtp:reset-hourly')->hourly();
-Schedule::command('emails:fetch-replies')->everyFiveMinutes();
-Schedule::command('warmup:progress')->daily();
+Schedule::command('app:fetch-email-replies')->everyFiveMinutes();
+Schedule::command('app:warmup-progress')->daily(); // Corrected command name
+Schedule::command('inbox:health')->everyTenMinutes();
+Schedule::command('app:reset-health-stats')->daily(); // Corrected command name
+Schedule::command('spam:check')->everyFiveMinutes();

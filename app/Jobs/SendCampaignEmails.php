@@ -5,8 +5,10 @@ namespace App\Jobs;
 use App\Models\Campaign;
 use App\Models\SmtpServer;
 use App\Models\Contact;
+use App\Models\SeedInbox;
 use App\Services\Mail\MailManager;
 use App\Services\Rotation\InboxRotator;
+use App\Jobs\SendSeedEmailJob;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -63,6 +65,7 @@ class SendCampaignEmails implements ShouldQueue
             $parsedBody = $this->injectTracking($parsedBody, $message, $campaign->emailContent->format);
 
             try {
+                $smtp->increment('sent_last_24h');
                 // Use the new provider system
                 $provider = MailManager::resolve($smtp);
 
@@ -74,11 +77,20 @@ class SendCampaignEmails implements ShouldQueue
                     'message' => $message, // Pass message for provider_message_id storage
                 ]);
 
-                $message->update(['status' => 'sent']);
+                $message->update(['status' => 'sent',
+                'smtp_server_id' => $smtp->id,]);
                 $smtp->increment('sent_today');
                 $smtp->increment('sent_this_hour');
                 $smtp->update(['last_sent_at' => now()]);
                 $campaign->increment('sent');
+
+                // Every ~50th email, send to a seed inbox to check spam placement
+                if (rand(1, 50) === 1) {
+                    $seed = SeedInbox::inRandomOrder()->first();
+                    if ($seed) {
+                        dispatch(new SendSeedEmailJob($smtp, $seed));
+                    }
+                }
 
                 if ($campaign->user->subscription) {
                     $campaign->user->subscription->increment('emails_used');
@@ -92,6 +104,7 @@ class SendCampaignEmails implements ShouldQueue
             } catch (\Exception $e) {
                 $message->update(['status' => 'failed']);
                 $smtp->increment('failure_count');
+                $smtp->increment('fails_last_24h');
 
                 if ($smtp->failure_count > 5) {
                     $smtp->update(['is_blocked' => true]);

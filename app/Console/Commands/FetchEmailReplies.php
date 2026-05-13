@@ -66,6 +66,10 @@ class FetchEmailReplies extends Command
                 'from_email' => $msg->getFrom()[0]->mail,
                 'body' => $msg->getTextBody(),
             ]);
+            
+            if ($campaignMessage->smtp) {
+                $campaignMessage->smtp->increment('replies_last_24h');
+            }
 
             $campaignMessage->update([
                 'replied' => true,

@@ -3,7 +3,6 @@
 namespace App\Services\Mail;
 
 use Illuminate\Support\Facades\Mail;
-use App\Mail\GenericMail;
 
 class SmtpProvider implements MailProvider
 {
@@ -17,8 +16,17 @@ class SmtpProvider implements MailProvider
             'mail.mailers.smtp.encryption' => $data['smtp']->encryption ?? 'tls',
         ]);
 
-        Mail::mailer('smtp')->to($data['to'])->send(
-            new GenericMail($data['subject'], $data['body'])
-        );
+       
+        Mail::mailer('smtp')->send([], [], function ($message) use ($data) {
+            $message->to($data['to'])
+                    ->subject($data['subject'])
+                    ->html($data['body']);
+                    
+            // These headers allow your IMAP checker to track which SMTP sent the mail and the specific message
+            $message->getHeaders()->addTextHeader('X-App-Smtp-ID', (string) $data['smtp']->id);
+            if (isset($data['message_uuid'])) {
+                $message->getHeaders()->addTextHeader('X-App-Message-UUID', $data['message_uuid']);
+            }
+        });
     }
 }

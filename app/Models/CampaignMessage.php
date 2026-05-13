@@ -7,7 +7,7 @@ use Illuminate\Support\Str;
 
 class CampaignMessage extends Model
 {
-    protected $fillable = ['campaign_id', 'email', 'status', 'message_uuid'];
+    protected $fillable = ['campaign_id', 'email', 'status', 'message_uuid', 'smtp_server_id'];
 
     public function campaign()
     {
@@ -22,4 +22,8 @@ class CampaignMessage extends Model
             $message->message_uuid = (string) Str::uuid();
         });
     }
+    public function smtp()
+{
+    return $this->belongsTo(SmtpServer::class, 'smtp_server_id');
+}
 }

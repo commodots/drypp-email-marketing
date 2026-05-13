@@ -13,6 +13,12 @@ class SendGridProvider implements MailProvider
         $email->setSubject($data['subject']);
         $email->addTo($data['to']);
         $email->addContent("text/html", $data['body']);
+        
+        // Add custom headers for IMAP tracking
+        $email->addHeader('X-App-Smtp-ID', (string) $data['smtp']->id);
+        if (isset($data['message_uuid'])) {
+            $email->addHeader('X-App-Message-UUID', $data['message_uuid']);
+        }
         $email->addCustomArg('uuid', $data['message']->message_uuid ?? null);
         $email->addCustomArg('message_uuid', $data['message']->message_uuid ?? null);
 

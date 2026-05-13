@@ -10,26 +10,31 @@ class TrackingController extends Controller
 {
     public function open($uuid)
     {
-        $message = CampaignMessage::with('campaign')->where('message_uuid', $uuid)->firstOrFail();
+        $message = CampaignMessage::with(['campaign', 'smtp'])->where('message_uuid', $uuid)->firstOrFail();
 
-        if ($message && !$message->opened_at) {
+        if (!$message->opened_at) {
             $message->update(['opened_at' => now()]);
             $message->campaign()->increment('opens');
+            
+            if ($message->smtp) {
+                $message->smtp->increment('opens_last_24h');
+            }
         }
 
-        // Return a 1x1 transparent tracking pixel
-        return response()->file(public_path('pixel.png'), [
-            'Content-Type' => 'image/png',
-        ]);
+        return response()->file(public_path('pixel.png'), ['Content-Type' => 'image/png']);
     }
 
     public function click(Request $request, $uuid)
     {
-        $message = CampaignMessage::with('campaign')->where('message_uuid', $uuid)->firstOrFail();
+        $message = CampaignMessage::with(['campaign', 'smtp'])->where('message_uuid', $uuid)->firstOrFail();
 
-        if ($message && !$message->clicked_at) {
+        if (!$message->clicked_at) {
             $message->update(['clicked_at' => now()]);
             $message->campaign()->increment('clicks');
+
+            if ($message->smtp) {
+                $message->smtp->increment('clicks_last_24h');
+            }
         }
 
         return redirect($request->query('redirect', '/'));

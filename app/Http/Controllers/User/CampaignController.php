@@ -74,7 +74,7 @@ class CampaignController extends Controller
                     ->get();
             }
 
-            // Map the dynamic contacts to look exactly like the CampaignMessage objects the Blade file expects
+            
             $previewRecipients = $previewRecipients->map(function ($contact) {
                 return (object)[
                     'email' => $contact->email,
@@ -84,7 +84,7 @@ class CampaignController extends Controller
 
             $totalRecipients = $previewRecipients->count();
         } else {
-            // For queued/sending/completed campaigns, just use the real messages table
+            
             $previewRecipients = $campaign->messages;
             $totalRecipients = $campaign->total_emails;
         }
@@ -146,7 +146,7 @@ class CampaignController extends Controller
         if ($request->action === 'draft') return $this->store($request);
         if ($request->action === 'preview') return $this->store($request);
 
-        $contactsQuery = Contact::query()->where('user_id', \Illuminate\Support\Facades\Auth::id());
+        $contactsQuery = Auth::user()->contacts();
 
         if ($request->recipient_type === 'group') {
             // Validate group belongs to user if specified
@@ -211,25 +211,10 @@ class CampaignController extends Controller
         $isDraft = $request->input('action') === 'draft';
         $status = $isDraft ? 'draft' : 'queued';
 
-        $emails = collect();
-
         // Gather emails early if not a draft to check quota accurately
         if (!$isDraft) {
-            if ($request->recipient_type === 'group') {
-                $emails = ContactGroupItem::where('contact_group_id', $request->group_id)
-                    ->join('contacts', 'contacts.id', '=', 'contact_group_items.contact_id')
-                    ->pluck('contacts.email');
-            } elseif ($request->recipient_type === 'all') {
-                $emails = Contact::where('user_id', Auth::id())->pluck('email');
-            } elseif ($request->recipient_type === 'except') {
-                $emails = Contact::where('user_id', Auth::id())
-                    ->whereNotIn('id', $request->excluded_contact_ids ?? [])
-                    ->pluck('email');
-            }
-
-            if ($emails->isEmpty()) {
-                return redirect()->route('campaigns.create')->withErrors(['msg' => 'No recipients found.']);
-            }
+            $emails = $this->getRecipientsForCampaign($request->recipient_type, $request->group_id, $request->excluded_contact_ids);
+            if ($emails->isEmpty()) return redirect()->route('campaigns.create')->withErrors(['msg' => 'No recipients found.']);
 
             if (!Auth::user()->hasQuota($emails->count())) {
                 return redirect()->route('campaigns.create')->withErrors(['msg' => 'You do not have enough email quota.']);
@@ -261,22 +246,10 @@ class CampaignController extends Controller
         }
 
         // If it is NOT a draft, proceed to gather emails and send to queue
-        $emails = collect();
-
-        if ($request->recipient_type === 'group') {
-            $emails = ContactGroupItem::where('contact_group_id', $request->group_id)
-                ->join('contacts', 'contacts.id', '=', 'contact_group_items.contact_id')
-                ->pluck('contacts.email');
-        } elseif ($request->recipient_type === 'all') {
-            // Case B: All Contacts
-            $emails = Contact::where('user_id', Auth::id())
-                ->pluck('email');
-        } elseif ($request->recipient_type === 'except') {
-            // Case C: All Except...
-            $emails = Contact::where('user_id', Auth::id())
-                ->whereNotIn('id', $request->excluded_contact_ids ?? [])
-                ->pluck('email');
-        }
+        $emails = $this->getRecipientsForCampaign(
+            $request->recipient_type,
+            $request->group_id,
+            $request->excluded_contact_ids);
 
         if ($emails->isEmpty()) {
             // Clean up if no emails were found
@@ -414,31 +387,49 @@ class CampaignController extends Controller
         if ($campaign->user_id !== Auth::id() || $campaign->status !== 'draft') abort(403);
         $campaign->delete();
         return redirect()->route('campaigns.index')->with('success', 'Draft deleted.');
+    }    
+
+    /**
+     * Helper method to get recipient emails based on campaign rules.
+     */
+    private function getRecipientsForCampaign(string $recipientType, ?int $groupId, ?array $excludedContactIds): \Illuminate\Support\Collection
+    {
+        $emails = collect();
+
+        if ($recipientType === 'group') {
+            $emails = ContactGroupItem::where('contact_group_id', $groupId)
+                ->join('contacts', 'contacts.id', '=', 'contact_group_items.contact_id')
+                ->pluck('contacts.email');
+        } elseif ($recipientType === 'all') {
+            $emails = Auth::user()->contacts()->pluck('email');
+        } elseif ($recipientType === 'except') {
+            $emails = Auth::user()->contacts()
+                ->whereNotIn('id', $excludedContactIds ?? [])
+                ->pluck('email');
+        }
+        return $emails;
     }
 
-    private function extractMetaKeys(Request $request)
+    /**
+     * Extracts unique meta keys from contacts based on recipient type.
+     */
+    private function extractMetaKeys(Request $request): array
     {
-        $contactsQuery = Contact::where('user_id', Auth::id());
+        $contactsQuery = Auth::user()->contacts();
 
         if ($request->recipient_type === 'group' && $request->group_id) {
             $contactsQuery->whereHas('groups', function ($q) use ($request) {
                 $q->where('contact_groups.id', $request->group_id);
             });
         } elseif ($request->recipient_type === 'except') {
-            $contactsQuery->whereNotIn('id', $request->excluded_contact_ids ?? []);
+            $contactsQuery->whereNotIn('id', $request->excluded_contact_ids ?? []); // Ensure this is an array
         }
 
-        $recipients = $contactsQuery->get(['meta']);
-
-        $metaKeysArray = [];
-        foreach ($recipients as $contact) {
-            if (is_array($contact->meta)) {
-                foreach (array_keys($contact->meta) as $key) {
-                    $metaKeysArray[$key] = true;
-                }
-            }
-        }
-
-        return array_keys($metaKeysArray);
+        return $contactsQuery->pluck('meta')
+            ->filter(fn($meta) => is_array($meta))
+            ->flatMap(fn($meta) => array_keys($meta))
+            ->unique()
+            ->values() // Reset keys to be a simple array
+            ->toArray();
     }
 }

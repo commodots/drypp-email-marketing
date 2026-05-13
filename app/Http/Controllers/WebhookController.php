@@ -17,10 +17,21 @@ class WebhookController extends Controller
                 continue;
             }
 
-            CampaignMessage::where('message_uuid', $event['custom_args']['uuid'])
-                ->update([
-                    'status' => $event['event'] ?? 'processed',
-                ]);
+            $message = CampaignMessage::with('smtp')->where('message_uuid', $event['custom_args']['uuid'])->first();
+            
+            if ($message) {
+                $status = $event['event'] ?? 'processed';
+                $message->update(['status' => $status]);
+
+                if ($message->smtp) {
+                    if (in_array($status, ['bounce', 'deferred', 'dropped'])) {
+                        $message->smtp->increment('bounces_last_24h');
+                    }
+                    if ($status === 'dropped') {
+                        $message->smtp->increment('fails_last_24h');
+                    }
+                }
+            }
         }
 
         return response()->json(['success' => true]);
