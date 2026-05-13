@@ -15,7 +15,8 @@ class DashboardController extends Controller
       'totalUsers' => User::where('role', 'user')->count(),
       'activeCampaigns' => Campaign::whereIn('status', ['queued', 'sending'])->count(),
       'emailsToday' => SmtpServer::sum('sent_today'),
-      'smtpHealth' => SmtpServer::where('active', true)->count()
+      'smtpHealth' => SmtpServer::where('active', true)->count(),
+      'smtps' => SmtpServer::all()
     ]);
   }
 }

@@ -30,13 +30,13 @@
                         <div>
                             <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Open Rate</p>
                             <p class="text-2xl font-black text-blue-600">
-                                {{ $campaign->sent > 0 ? number_format(($campaign->opens / $campaign->sent) * 100, 1) : 0 }}%
+                                {{ $campaign->open_rate }}%
                             </p>
                         </div>
                         <div>
                             <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Click Rate</p>
                             <p class="text-2xl font-black text-green-600">
-                                {{ $campaign->sent > 0 ? number_format(($campaign->clicks / $campaign->sent) * 100, 1) : 0 }}%
+                                {{ $campaign->click_rate }}%
                             </p>
                         </div>
                     </div>

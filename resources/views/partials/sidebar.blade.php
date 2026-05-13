@@ -1,7 +1,14 @@
-<aside class="hidden w-64 min-h-screen px-4 py-6 text-white bg-gray-900 lg:block">
-    <div class="mb-8 text-2xl font-bold">
-        Drypp
+<aside id="sidebar" class="hidden fixed inset-y-0 left-0 z-50 w-64 px-4 py-6 text-white bg-gray-900 lg:static lg:block lg:min-h-screen">
+    
+    <div class="flex items-center justify-between mb-8">
+        <div class="mb-8 text-2xl font-bold">
+            Drypp
+        </div>
+        <button id="closeSidebar" class="lg:hidden text-gray-400 hover:text-white text-2xl">
+            ✕
+        </button>
     </div>
+
     <nav class="space-y-3">
         @if (auth()->user()->role === 'user')
             <a href="/dashboard" class="block hover:text-blue-400">Dashboard</a>
@@ -50,6 +57,5 @@
                 </button>
             </form>
         </div>
-
     </nav>
 </aside>

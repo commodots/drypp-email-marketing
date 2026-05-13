@@ -176,5 +176,18 @@
                 btn.innerText = '👁';
             }
         }
+
+        const loginForm = document.querySelector('form');
+    const submitBtn = loginForm.querySelector('button[type="submit"]');
+
+    loginForm.addEventListener('submit', function() {
+        submitBtn.disabled = true;
+        submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        
+       
+        submitBtn.innerHTML = `
+            Signing in...
+        `;
+    });
     </script>
 </x-guest-layout>

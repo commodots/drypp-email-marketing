@@ -14,11 +14,11 @@
     @include('partials.sidebar')
 
     {{-- Main Content --}}
-    <div class="flex-1 lg:ml-0">
+    <div class="flex-1 flex flex-col min-w-0">
         {{-- Topbar --}}
         <header class="flex justify-between px-4 md:px-6 py-4 bg-white shadow">
             <div class="flex items-center">
-                <button id="sidebarToggle" class="lg:hidden mr-4 text-gray-600 hover:text-gray-800">☰</button>
+                <button id="sidebarToggle" class="lg:hidden mr-4 text-gray-600 hover:text-gray-800 text-2xl">☰</button>
                 <h1 class="text-xl font-semibold">@yield('title')</h1>
             </div>
             <div>
@@ -28,18 +28,28 @@
 
         {{-- Page Content --}}
         <main class="p-4 md:p-6">
-        @yield('content')
-
-        @stack('scripts')
-
-<script>
-document.getElementById('sidebarToggle').addEventListener('click', function() {
-    const sidebar = document.querySelector('aside');
-    sidebar.classList.toggle('hidden');
-});
-</script>
-    </main>
+            @yield('content')
+        </main>
     </div>
 </div>
+
+@stack('scripts')
+
+<script>
+    const sidebar = document.getElementById('sidebar');
+    const openBtn = document.getElementById('sidebarToggle');
+    const closeBtn = document.getElementById('closeSidebar');
+
+    openBtn.addEventListener('click', function() {
+        sidebar.classList.remove('hidden'); // Show sidebar
+        openBtn.classList.add('hidden');    // Hide hamburger
+    });
+
+    closeBtn.addEventListener('click', function() {
+        sidebar.classList.add('hidden');       // Hide sidebar
+        openBtn.classList.remove('hidden');    // Show hamburger
+    });
+</script>
+
 </body>
 </html>

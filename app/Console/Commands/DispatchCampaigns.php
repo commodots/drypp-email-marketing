@@ -5,8 +5,8 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Models\CampaignMessage;
 use App\Models\Contact;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\Mail;
+use App\Services\Rotation\InboxRotator;
+use App\Services\Mail\MailManager;
 
 class DispatchCampaigns extends Command
 {

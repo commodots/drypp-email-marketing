@@ -16,6 +16,12 @@ class ReportController extends Controller
             ->latest()
             ->get();
 
+        foreach ($campaigns as $c) {
+            $total = max($c->total_emails, 1);
+            $c->open_rate = round(($c->messages()->whereNotNull('opened_at')->count() / $total) * 100, 1);
+            $c->click_rate = round(($c->messages()->whereNotNull('clicked_at')->count() / $total) * 100, 1);
+        }
+
         return view('user.reports', compact('campaigns'));
     }
 
@@ -33,16 +39,22 @@ class ReportController extends Controller
     {
         if ($campaign->user_id !== Auth::id()) abort(403);
 
-        $headers = ["Recipient", "Status", "Opened", "Clicked", "Sent At"];
+        $headers = ["Campaign Name", "Status", "Total Emails", "Sent", "Opened", "Clicked", "Open Rate %", "Click Rate %", "Created At"];
 
         $callback = function() use ($campaign, $headers) {
             $file = fopen('php://output', 'w');
             fputcsv($file, $headers);
+            
+            $total = max($campaign->total_emails, 1);
             fputcsv($file, [
                 $campaign->name,
                 $campaign->status,
-                $campaign->opens,
-                $campaign->clicks,
+                $campaign->total_emails,
+                $campaign->sent,
+                $campaign->messages()->whereNotNull('opened_at')->count(),
+                $campaign->messages()->whereNotNull('clicked_at')->count(),
+                round(($campaign->messages()->whereNotNull('opened_at')->count() / $total) * 100, 2),
+                round(($campaign->messages()->whereNotNull('clicked_at')->count() / $total) * 100, 2),
                 $campaign->updated_at
             ]);
             fclose($file);
