@@ -14,6 +14,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class SendCampaignEmails implements ShouldQueue
 {
@@ -102,6 +103,15 @@ class SendCampaignEmails implements ShouldQueue
                     ->delay(now()->addSeconds($delay));
 
             } catch (\Exception $e) {
+                Log::error('Failed to send campaign email', [
+                    'campaign_id' => $this->campaignId,
+                    'message_id' => $message->id,
+                    'email' => $message->email,
+                    'smtp_id' => $smtp->id,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                
                 $message->update(['status' => 'failed']);
                 $smtp->increment('failure_count');
                 $smtp->increment('fails_last_24h');

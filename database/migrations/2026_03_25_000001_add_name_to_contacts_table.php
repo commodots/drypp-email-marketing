@@ -17,11 +17,16 @@ return new class extends Migration
 
         // 2. Now handle the unique index in a separate block
         Schema::table('contacts', function (Blueprint $table) {
-            // We use a try-catch or check to ensure we don't crash if the index exists locally
-            $sm = Schema::getConnection()->getDoctrineSchemaManager();
-            $indexes = $sm->listTableIndexes('contacts');
-            
-            if (!array_key_exists('contacts_user_id_email_unique', $indexes)) {
+            // We use a try-catch to ensure we don't crash if the index exists locally or Doctrine is not available
+            try {
+                $sm = Schema::getConnection()->getDoctrineSchemaManager();
+                $indexes = $sm->listTableIndexes('contacts');
+                
+                if (!array_key_exists('contacts_user_id_email_unique', $indexes)) {
+                    $table->unique(['user_id', 'email']);
+                }
+            } catch (\Exception $e) {
+                
                 $table->unique(['user_id', 'email']);
             }
         });

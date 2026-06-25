@@ -21,7 +21,15 @@ class TrackingController extends Controller
             }
         }
 
-        return response()->file(public_path('pixel.png'), ['Content-Type' => 'image/png']);
+        $pixelPath = public_path('pixel.png');
+        
+        if (file_exists($pixelPath)) {
+            return response()->file($pixelPath, ['Content-Type' => 'image/png']);
+        }
+        
+        // Fallback: return a 1x1 transparent PNG if file doesn't exist
+        $fallbackPng = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==');
+        return response($fallbackPng, 200, ['Content-Type' => 'image/png']);
     }
 
     public function click(Request $request, $uuid)
@@ -37,6 +45,17 @@ class TrackingController extends Controller
             }
         }
 
-        return redirect($request->query('redirect', '/'));
+        $redirect = $request->query('redirect', '/');
+        
+        // Security: Only allow relative URLs or same-origin redirects
+        if (filter_var($redirect, FILTER_VALIDATE_URL)) {
+            $parsed = parse_url($redirect);
+            // Only allow http/https schemes and same host or empty host
+            if (!in_array($parsed['scheme'] ?? '', ['http', 'https'])) {
+                $redirect = '/';
+            }
+        }
+        
+        return redirect($redirect);
     }
 }

@@ -2,6 +2,10 @@
 
 namespace App\Services\Mail;
 
+use App\Services\Mail\SendGridProvider;
+use App\Services\Mail\SesProvider;
+use App\Services\Mail\SmtpProvider;
+
 class MailManager
 {
     public static function resolve($smtp)
